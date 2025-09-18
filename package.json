@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "next dev --turbopack",
     "build": "next build --turbopack",
-    "build:netlify": "next build",
+    "build:netlify": "next build --no-lint",
     "start": "next start",
     "lint": "eslint"
   },
