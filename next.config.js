@@ -8,13 +8,12 @@ const nextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
-  experimental: {
-    typedRoutes: false,
+  typedRoutes: false,
+  output: 'export',
+  trailingSlash: true,
+  images: {
+    unoptimized: true,
   },
-  output: 'standalone',
-  trailingSlash: false,
-  skipTrailingSlashRedirect: true,
-  skipMiddlewareUrlNormalize: true,
   webpack: (config) => {
     config.resolve.alias = {
       ...config.resolve.alias,
