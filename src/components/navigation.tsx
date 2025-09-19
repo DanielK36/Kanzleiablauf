@@ -82,16 +82,38 @@ export default function Navigation() {
               </Link>
               
               {userData?.role === 'admin' && (
-                <Link 
-                  href="/admin" 
-                  className={`text-sm font-medium transition-colors ${
-                    isActive('/admin') 
-                      ? 'text-blue-600 border-b-2 border-blue-600 pb-1' 
-                      : 'text-gray-700 hover:text-gray-900'
-                  }`}
-                >
-                  Admin
-                </Link>
+                <>
+                  <Link 
+                    href="/admin" 
+                    className={`text-sm font-medium transition-colors ${
+                      isActive('/admin') 
+                        ? 'text-blue-600 border-b-2 border-blue-600 pb-1' 
+                        : 'text-gray-700 hover:text-gray-900'
+                    }`}
+                  >
+                    Admin
+                  </Link>
+                  <Link 
+                    href="/admin/weekday-questions" 
+                    className={`text-sm font-medium transition-colors ${
+                      isActive('/admin/weekday-questions') 
+                        ? 'text-blue-600 border-b-2 border-blue-600 pb-1' 
+                        : 'text-gray-700 hover:text-gray-900'
+                    }`}
+                  >
+                    Fragen
+                  </Link>
+                  <Link 
+                    href="/admin/teams" 
+                    className={`text-sm font-medium transition-colors ${
+                      isActive('/admin/teams') 
+                        ? 'text-blue-600 border-b-2 border-blue-600 pb-1' 
+                        : 'text-gray-700 hover:text-gray-900'
+                    }`}
+                  >
+                    Teams
+                  </Link>
+                </>
               )}
             </div>
           </div>
