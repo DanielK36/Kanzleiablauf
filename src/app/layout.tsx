@@ -82,11 +82,18 @@ export default function RootLayout({
               </div>
             </header>
           </SignedOut>
-                   <main className="flex-grow">
-                     <ConsentWrapper>
-                       {children}
-                     </ConsentWrapper>
-                   </main>
+          <SignedIn>
+            <main className="flex-grow">
+              <ConsentWrapper>
+                {children}
+              </ConsentWrapper>
+            </main>
+          </SignedIn>
+          <SignedOut>
+            <main className="flex-grow">
+              {children}
+            </main>
+          </SignedOut>
           <Footer />
         </body>
       </html>

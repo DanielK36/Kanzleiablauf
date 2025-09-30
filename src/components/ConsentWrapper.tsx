@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { usePathname } from 'next/navigation';
 import ConsentScreen from './ConsentScreen';
 
 interface ConsentWrapperProps {
@@ -10,10 +11,21 @@ interface ConsentWrapperProps {
 export default function ConsentWrapper({ children }: ConsentWrapperProps) {
   const [hasConsent, setHasConsent] = useState<boolean | null>(null);
   const [loading, setLoading] = useState(true);
+  const pathname = usePathname();
+
+  // Pages that should bypass consent check
+  const bypassConsentPages = ['/privacy', '/terms', '/impressum'];
 
   useEffect(() => {
+    // Skip consent check for legal pages
+    if (bypassConsentPages.includes(pathname)) {
+      setHasConsent(true);
+      setLoading(false);
+      return;
+    }
+    
     checkConsent();
-  }, []);
+  }, [pathname]);
 
   const checkConsent = async () => {
     try {
