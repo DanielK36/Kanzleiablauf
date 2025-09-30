@@ -19,6 +19,8 @@ export default function ConsentScreen({ onConsent }: ConsentScreenProps) {
   const handleConsent = async (accepted: boolean) => {
     setLoading(true);
     try {
+      console.log('🔍 ConsentScreen - Sending consent:', { accepted });
+      
       const response = await fetch('/api/consent', {
         method: 'POST',
         headers: {
@@ -30,7 +32,12 @@ export default function ConsentScreen({ onConsent }: ConsentScreenProps) {
         }),
       });
 
+      console.log('🔍 ConsentScreen - Response status:', response.status);
+      
       if (response.ok) {
+        const result = await response.json();
+        console.log('🔍 ConsentScreen - Response data:', result);
+        
         onConsent(accepted);
         if (accepted) {
           // Weiterleitung zum Onboarding
@@ -40,10 +47,13 @@ export default function ConsentScreen({ onConsent }: ConsentScreenProps) {
           window.location.href = '/api/auth/logout';
         }
       } else {
-        console.error('Fehler beim Speichern der Einwilligung');
+        const errorData = await response.json();
+        console.error('❌ ConsentScreen - Fehler beim Speichern der Einwilligung:', errorData);
+        alert('Fehler beim Speichern der Einwilligung: ' + (errorData.error || 'Unbekannter Fehler'));
       }
     } catch (error) {
-      console.error('Fehler beim Speichern der Einwilligung:', error);
+      console.error('❌ ConsentScreen - Fehler beim Speichern der Einwilligung:', error);
+      alert('Fehler beim Speichern der Einwilligung: ' + error);
     } finally {
       setLoading(false);
     }

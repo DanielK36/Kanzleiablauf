@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useUser } from '@clerk/nextjs';
 import { useRouter } from 'next/navigation';
+import { SignedIn, SignedOut, RedirectToSignIn } from '@clerk/nextjs';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -43,7 +44,7 @@ interface OrgNode {
   parentId?: string;
 }
 
-export default function AdminPage() {
+function AdminPageContent() {
   const { user, isLoaded } = useUser();
   const router = useRouter();
   const [teams, setTeams] = useState<Team[]>([]);
@@ -67,8 +68,19 @@ export default function AdminPage() {
 
   // Check admin access
   const checkAdminAccess = async () => {
-    // Skip authentication check for development
-    console.log('Skipping admin access check');
+    if (!user) return false;
+    
+    try {
+      const response = await fetch('/api/admin/users');
+      if (response.status === 403) {
+        router.push('/simple-dashboard');
+        return false;
+      }
+      return response.ok;
+    } catch (error) {
+      console.error('Admin access check failed:', error);
+      return false;
+    }
   };
 
   // Load all data
@@ -638,10 +650,14 @@ export default function AdminPage() {
   };
 
   useEffect(() => {
-    // Skip authentication checks but load data
-    console.log('Loading admin data without auth checks');
-    loadData();
-  }, []);
+    if (isLoaded && user) {
+      checkAdminAccess().then(hasAccess => {
+        if (hasAccess) {
+          loadData();
+        }
+      });
+    }
+  }, [isLoaded, user]);
 
   if (loading) {
     return (
@@ -1094,5 +1110,18 @@ export default function AdminPage() {
         )}
       </div>
     </div>
+  );
+}
+
+export default function AdminPage() {
+  return (
+    <>
+      <SignedIn>
+        <AdminPageContent />
+      </SignedIn>
+      <SignedOut>
+        <RedirectToSignIn />
+      </SignedOut>
+    </>
   );
 }

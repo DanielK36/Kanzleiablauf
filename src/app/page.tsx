@@ -1,4 +1,7 @@
+'use client';
+
 import Link from 'next/link';
+import { SignInButton } from '@clerk/nextjs';
 
 export default function HomePage() {
   return (
@@ -22,12 +25,11 @@ export default function HomePage() {
             </ul>
           </div>
           <div className="space-y-4">
-            <Link 
-              href="/onboarding" 
-              className="inline-block bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-8 rounded-lg text-lg transition-colors"
-            >
-              🚀 Jetzt starten
-            </Link>
+            <SignInButton mode="modal">
+              <button className="inline-block bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-8 rounded-lg text-lg transition-colors">
+                🚀 Jetzt starten
+              </button>
+            </SignInButton>
              <div className="flex justify-center space-x-6 text-sm text-gray-500">
                <Link href="/privacy" className="hover:text-gray-700">Datenschutz</Link>
                <Link href="/impressum" className="hover:text-gray-700">Impressum</Link>
