@@ -2,99 +2,196 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { createSupabaseServerClient } from '@/lib/supabase';
 
-export async function POST(request: NextRequest) {
+export async function GET(request: NextRequest) {
   try {
+    // Aktuelle User ID aus Clerk Auth holen
     const { userId } = await auth();
+    
     if (!userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const body = await request.json();
-    const { firstName, lastName, name, team_name, role, parent_leader_id, personal_targets, monthly_targets } = body;
-
-    console.log('Received onboarding data:', body); // Debug log
-
-    const supabase = createSupabaseServerClient();
-
-    // Upsert user data with proper conflict resolution
-    const { data: user, error } = await supabase
-      .from('users')
-      .upsert({
-        clerk_id: userId,
-        email: body.email || 'user@example.com',
-        name: name || `${firstName || ''} ${lastName || ''}`.trim(),
-        team_name,
-        role,
-        parent_leader_id,
-        personal_targets: personal_targets || {
-          fa_daily: 5,
-          eh_daily: 3,
-          new_appointments_daily: 3,
-          recommendations_daily: 2,
-          tiv_invitations_daily: 2,
-          taa_invitations_daily: 1,
-          tgs_registrations_daily: 1,
-          bav_checks_daily: 2
-        },
-        monthly_targets: monthly_targets || {
-          fa_target: 110,
-          eh_target: 66,
-          new_appointments_target: 66,
-          recommendations_target: 44,
-          tiv_invitations_target: 22,
-          taa_invitations_target: 22,
-          tgs_registrations_target: 22,
-          bav_checks_target: 44
-        },
-        consent_given: true,
-        consent_date: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      }, { onConflict: 'clerk_id' })
-      .select()
-      .single();
-
-    console.log('Supabase response:', { data: user, error }); // Debug log
-
-    if (error) {
-      console.error('Error creating/updating user:', error);
       return NextResponse.json({ 
-        error: 'Database error', 
-        details: error.message,
-        code: error.code,
-        hint: error.hint
-      }, { status: 500 });
+        success: false, 
+        error: 'Not authenticated' 
+      }, { status: 401 });
     }
-
-    return NextResponse.json(user);
-  } catch (error) {
-    console.error('Error in POST /api/users:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
-  }
-}
-
-export async function GET() {
-  try {
-    const { userId } = await auth();
-    if (!userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
+    
     const supabase = createSupabaseServerClient();
-
-    const { data: user, error } = await supabase
+    
+    // Fetch user data
+    const { data: userData, error: userError } = await supabase
       .from('users')
       .select('*')
       .eq('clerk_id', userId)
-      .single();
+      .maybeSingle();
 
-    if (error) {
-      console.error('Error fetching user:', error);
-      return NextResponse.json({ error: 'User not found' }, { status: 404 });
+    if (userError) {
+      console.error('Error fetching user:', userError);
+      return NextResponse.json({ success: false, message: 'Error fetching user data' }, { status: 500 });
     }
 
-    return NextResponse.json(user);
-  } catch (error) {
+    if (!userData) {
+      return NextResponse.json({ success: false, message: 'User not found' }, { status: 404 });
+    }
+
+    return NextResponse.json({ 
+      success: true, 
+      data: {
+        id: userData.id,
+        clerk_id: userData.clerk_id,
+        firstname: userData.firstname,
+        lastname: userData.lastname,
+        name: userData.name,
+        role: userData.role,
+        team_id: userData.team_id,
+        team_name: userData.team_name,
+        personal_targets: userData.personal_targets
+      }
+    });
+  } catch (error: any) {
     console.error('Error in GET /api/users:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return NextResponse.json({ success: false, message: error.message || 'Internal Server Error' }, { status: 500 });
+  }
+}
+
+export async function POST(request: NextRequest) {
+  try {
+    // Aktuelle User ID aus Clerk Auth holen
+    const { userId } = await auth();
+    
+    if (!userId) {
+      return NextResponse.json({ 
+        success: false, 
+        error: 'Not authenticated' 
+      }, { status: 401 });
+    }
+    
+    const body = await request.json();
+
+    // Prüfen ob User bereits existiert
+    const { data: existingUser } = await supabase
+      .from('users')
+      .select('id')
+      .eq('clerk_id', userId)
+      .maybeSingle();
+
+    let data, error;
+
+    if (existingUser) {
+      // User existiert - Update
+      
+      // 1. Team-ID basierend auf team_name finden oder erstellen (falls team_id noch null ist)
+      let teamId = null;
+      if (body.team_name) {
+        // Erst versuchen, existierendes Team zu finden
+        const { data: existingTeam } = await supabase
+          .from('teams')
+          .select('id')
+          .eq('name', body.team_name)
+          .maybeSingle();
+        
+        if (existingTeam) {
+          teamId = existingTeam.id;
+        } else {
+          // Team existiert nicht - erstellen
+          const { data: newTeam, error: teamError } = await supabase
+            .from('teams')
+            .insert({
+              name: body.team_name,
+              description: `${body.team_name} Team`,
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString()
+            })
+            .select('id')
+            .single();
+          
+          if (!teamError && newTeam) {
+            teamId = newTeam.id;
+          }
+        }
+      }
+      
+      // 2. User mit team_id updaten
+      const result = await supabase
+        .from('users')
+        .update({
+          firstname: body.firstName,
+          lastname: body.lastName,
+          name: body.name,
+          role: body.role,
+          team_name: body.team_name,
+          team_id: teamId, // Automatisch zugewiesene team_id
+          parent_leader_id: body.parent_leader_id || null,
+          personal_targets: body.personal_targets || {}
+        })
+        .eq('clerk_id', userId)
+        .select()
+        .single();
+      data = result.data;
+      error = result.error;
+    } else {
+      // User existiert nicht - Create
+      
+      // 1. Team-ID basierend auf team_name finden oder erstellen
+      let teamId = null;
+      if (body.team_name) {
+        // Erst versuchen, existierendes Team zu finden
+        const { data: existingTeam } = await supabase
+          .from('teams')
+          .select('id')
+          .eq('name', body.team_name)
+          .maybeSingle();
+        
+        if (existingTeam) {
+          teamId = existingTeam.id;
+        } else {
+          // Team existiert nicht - erstellen
+          const { data: newTeam, error: teamError } = await supabase
+            .from('teams')
+            .insert({
+              name: body.team_name,
+              description: `${body.team_name} Team`,
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString()
+            })
+            .select('id')
+            .single();
+          
+          if (!teamError && newTeam) {
+            teamId = newTeam.id;
+          }
+        }
+      }
+      
+      // 2. User mit team_id erstellen
+      const result = await supabase
+        .from('users')
+        .insert({
+          clerk_id: userId,
+          email: body.email || '',
+          firstname: body.firstName,
+          lastname: body.lastName,
+          name: body.name,
+          role: body.role,
+          team_name: body.team_name,
+          team_id: teamId, // Automatisch zugewiesene team_id
+          parent_leader_id: body.parent_leader_id || null,
+          personal_targets: body.personal_targets || {},
+          consent_given: true,
+          consent_date: new Date().toISOString()
+        })
+        .select()
+        .single();
+      data = result.data;
+      error = result.error;
+    }
+
+    if (error) {
+      console.error('Error updating user:', error);
+      return NextResponse.json({ success: false, message: 'Error updating user data' }, { status: 500 });
+    }
+
+    return NextResponse.json({ success: true, data });
+  } catch (error: any) {
+    console.error('Error in POST /api/users:', error);
+    return NextResponse.json({ success: false, message: error.message || 'Internal Server Error' }, { status: 500 });
   }
 }

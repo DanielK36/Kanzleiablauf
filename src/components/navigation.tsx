@@ -24,8 +24,10 @@ export default function Navigation() {
     try {
       const response = await fetch('/api/users');
       if (response.ok) {
-        const data = await response.json();
-        setUserData(data);
+        const result = await response.json();
+        if (result.success) {
+          setUserData(result.data);
+        }
       }
     } catch (error) {
       console.error('Error loading user data:', error);
@@ -49,9 +51,9 @@ export default function Navigation() {
             
             <div className="hidden md:flex space-x-6">
               <Link 
-                href="/dashboard" 
+                href="/simple-dashboard" 
                 className={`text-sm font-medium transition-colors ${
-                  isActive('/dashboard') 
+                  isActive('/simple-dashboard') 
                     ? 'text-blue-600 border-b-2 border-blue-600 pb-1' 
                     : 'text-gray-700 hover:text-gray-900'
                 }`}
@@ -60,20 +62,9 @@ export default function Navigation() {
               </Link>
               
               <Link 
-                href="/berater" 
+                href="/simple-kanzleiablauf-v3" 
                 className={`text-sm font-medium transition-colors ${
-                  isActive('/berater') 
-                    ? 'text-blue-600 border-b-2 border-blue-600 pb-1' 
-                    : 'text-gray-700 hover:text-gray-900'
-                }`}
-              >
-                Berater
-              </Link>
-              
-              <Link 
-                href="/kanzleiablauf" 
-                className={`text-sm font-medium transition-colors ${
-                  isActive('/kanzleiablauf') 
+                  isActive('/simple-kanzleiablauf-v3') 
                     ? 'text-blue-600 border-b-2 border-blue-600 pb-1' 
                     : 'text-gray-700 hover:text-gray-900'
                 }`}
@@ -81,37 +72,28 @@ export default function Navigation() {
                 Kanzleiablauf
               </Link>
               
+              <Link 
+                href="/simple-kanzleiablauf-team" 
+                className={`text-sm font-medium transition-colors ${
+                  isActive('/simple-kanzleiablauf-team') 
+                    ? 'text-blue-600 border-b-2 border-blue-600 pb-1' 
+                    : 'text-gray-700 hover:text-gray-900'
+                }`}
+              >
+                Team-Übersicht
+              </Link>
+              
               {userData?.role === 'admin' && (
                 <>
                   <Link 
-                    href="/admin" 
+                    href="/admin/dashboard" 
                     className={`text-sm font-medium transition-colors ${
-                      isActive('/admin') 
+                      isActive('/admin/dashboard') || pathname.startsWith('/admin/')
                         ? 'text-blue-600 border-b-2 border-blue-600 pb-1' 
                         : 'text-gray-700 hover:text-gray-900'
                     }`}
                   >
                     Admin
-                  </Link>
-                  <Link 
-                    href="/admin/weekday-questions" 
-                    className={`text-sm font-medium transition-colors ${
-                      isActive('/admin/weekday-questions') 
-                        ? 'text-blue-600 border-b-2 border-blue-600 pb-1' 
-                        : 'text-gray-700 hover:text-gray-900'
-                    }`}
-                  >
-                    Fragen
-                  </Link>
-                  <Link 
-                    href="/admin/teams" 
-                    className={`text-sm font-medium transition-colors ${
-                      isActive('/admin/teams') 
-                        ? 'text-blue-600 border-b-2 border-blue-600 pb-1' 
-                        : 'text-gray-700 hover:text-gray-900'
-                    }`}
-                  >
-                    Teams
                   </Link>
                 </>
               )}

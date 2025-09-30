@@ -8,11 +8,13 @@ import {
   UserButton,
 } from "@clerk/nextjs";
 import Navigation from "@/components/navigation";
+import Footer from "@/components/Footer";
+import ConsentWrapper from "@/components/ConsentWrapper";
 import "./globals.css";
 
 export const metadata: Metadata = {
   title: "Leadership Enablement System",
-  description: "Ein umfassendes Führungssystem für überforderte Handelsvertreter-Leiter",
+  description: "Leadership Enablement System - Team Performance Dashboard",
 };
 
 export default function RootLayout({
@@ -51,7 +53,7 @@ export default function RootLayout({
   return (
     <ClerkProvider>
       <html lang="de">
-        <body className="antialiased">
+        <body className="antialiased flex flex-col min-h-screen">
           <SignedIn>
             <Navigation />
           </SignedIn>
@@ -80,7 +82,12 @@ export default function RootLayout({
               </div>
             </header>
           </SignedOut>
-          {children}
+                   <main className="flex-grow">
+                     <ConsentWrapper>
+                       {children}
+                     </ConsentWrapper>
+                   </main>
+          <Footer />
         </body>
       </html>
     </ClerkProvider>

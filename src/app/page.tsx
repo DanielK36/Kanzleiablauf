@@ -21,12 +21,19 @@ export default function HomePage() {
               <li>✅ GDPR-konforme Datenverwaltung</li>
             </ul>
           </div>
-          <Link 
-            href="/onboarding" 
-            className="inline-block bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-8 rounded-lg text-lg transition-colors"
-          >
-            🚀 Jetzt starten
-          </Link>
+          <div className="space-y-4">
+            <Link 
+              href="/onboarding" 
+              className="inline-block bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-8 rounded-lg text-lg transition-colors"
+            >
+              🚀 Jetzt starten
+            </Link>
+             <div className="flex justify-center space-x-6 text-sm text-gray-500">
+               <Link href="/privacy" className="hover:text-gray-700">Datenschutz</Link>
+               <Link href="/impressum" className="hover:text-gray-700">Impressum</Link>
+               <Link href="/terms" className="hover:text-gray-700">AGB</Link>
+             </div>
+          </div>
         </div>
       </div>
     </div>

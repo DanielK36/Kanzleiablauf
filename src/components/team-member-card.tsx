@@ -53,7 +53,7 @@ export const TeamMemberCard = ({ member, onSelect }: TeamMemberCardProps) => {
     >
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
-          <CardTitle className="text-lg">{member.name}</CardTitle>
+          <CardTitle className="text-lg">{member.firstName || member.name?.split(' ')[0] || member.name}</CardTitle>
           <div className="flex items-center space-x-2">
             <div className={`w-3 h-3 rounded-full ${getEnergyColor(member.energy_level)}`}></div>
             <Badge variant="outline" className={getStatusColor(member.status)}>

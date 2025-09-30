@@ -2,40 +2,30 @@
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 
 interface WeekdayQuestion {
-  id: string;
-  weekday: string;
-  question: string;
-  type: 'text' | 'number' | 'boolean';
-  required: boolean;
-  order: number;
+  id?: string;
+  weekday: number;
+  yesterday_question: string[];
+  today_questions: string[];
+  trainee_question: string[];
+  created_at?: string;
+  updated_at?: string;
 }
 
 export default function WeekdayQuestionsAdmin() {
   const [questions, setQuestions] = useState<WeekdayQuestion[]>([]);
   const [loading, setLoading] = useState(true);
   const [editingQuestion, setEditingQuestion] = useState<WeekdayQuestion | null>(null);
-  const [newQuestion, setNewQuestion] = useState<Partial<WeekdayQuestion>>({
-    weekday: 'monday',
-    question: '',
-    type: 'text',
-    required: true,
-    order: 0
-  });
 
   const weekdays = [
-    { value: 'monday', label: 'Montag' },
-    { value: 'tuesday', label: 'Dienstag' },
-    { value: 'wednesday', label: 'Mittwoch' },
-    { value: 'thursday', label: 'Donnerstag' },
-    { value: 'friday', label: 'Freitag' }
-  ];
-
-  const questionTypes = [
-    { value: 'text', label: 'Text' },
-    { value: 'number', label: 'Zahl' },
-    { value: 'boolean', label: 'Ja/Nein' }
+    { value: 1, label: 'Montag' },
+    { value: 2, label: 'Dienstag' },
+    { value: 3, label: 'Mittwoch' },
+    { value: 4, label: 'Donnerstag' },
+    { value: 5, label: 'Freitag' }
   ];
 
   useEffect(() => {
@@ -44,8 +34,18 @@ export default function WeekdayQuestionsAdmin() {
 
   const loadQuestions = async () => {
     try {
-      // TODO: Implement API endpoint
-      setQuestions([]);
+      console.log('🔍 Loading weekday questions...');
+      const response = await fetch('/api/admin/weekday-questions');
+      console.log('🔍 Response status:', response.status);
+      
+      if (response.ok) {
+        const data = await response.json();
+        console.log('🔍 Loaded questions:', data);
+        setQuestions(data);
+      } else {
+        const errorText = await response.text();
+        console.error('🔍 Error loading questions:', errorText);
+      }
     } catch (error) {
       console.error('Error loading questions:', error);
     } finally {
@@ -55,201 +55,292 @@ export default function WeekdayQuestionsAdmin() {
 
   const saveQuestion = async (question: WeekdayQuestion) => {
     try {
-      // TODO: Implement API endpoint
-      console.log('Saving question:', question);
-      await loadQuestions();
-      setEditingQuestion(null);
-      setNewQuestion({
-        weekday: 'monday',
-        question: '',
-        type: 'text',
-        required: true,
-        order: 0
+      const response = await fetch('/api/admin/weekday-questions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(question),
       });
+
+      if (response.ok) {
+        await loadQuestions();
+        setEditingQuestion(null);
+        alert('Fragen erfolgreich gespeichert!');
+      } else {
+        const errorData = await response.json();
+        console.error('Error saving question:', errorData);
+        alert('Fehler beim Speichern: ' + (errorData.error || 'Unbekannter Fehler'));
+      }
     } catch (error) {
       console.error('Error saving question:', error);
+      alert('Fehler beim Speichern: ' + error);
     }
   };
 
-  const deleteQuestion = async (id: string) => {
-    try {
-      // TODO: Implement API endpoint
-      console.log('Deleting question:', id);
-      await loadQuestions();
-    } catch (error) {
-      console.error('Error deleting question:', error);
-    }
+  const addTodayQuestion = (question: WeekdayQuestion) => {
+    const updatedQuestion = {
+      ...question,
+      today_questions: [...question.today_questions, '']
+    };
+    setEditingQuestion(updatedQuestion);
+  };
+
+  const updateTodayQuestion = (question: WeekdayQuestion, index: number, value: string) => {
+    const updatedQuestion = {
+      ...question,
+      today_questions: question.today_questions.map((q, i) => i === index ? value : q)
+    };
+    setEditingQuestion(updatedQuestion);
+  };
+
+  const removeTodayQuestion = (question: WeekdayQuestion, index: number) => {
+    const updatedQuestion = {
+      ...question,
+      today_questions: question.today_questions.filter((_, i) => i !== index)
+    };
+    setEditingQuestion(updatedQuestion);
+  };
+
+  // Helper functions for yesterday questions
+  const addYesterdayQuestion = (question: WeekdayQuestion) => {
+    const updatedQuestion = {
+      ...question,
+      yesterday_question: [...question.yesterday_question, '']
+    };
+    setEditingQuestion(updatedQuestion);
+  };
+
+  const updateYesterdayQuestion = (question: WeekdayQuestion, index: number, value: string) => {
+    const updatedQuestion = {
+      ...question,
+      yesterday_question: question.yesterday_question.map((q, i) => i === index ? value : q)
+    };
+    setEditingQuestion(updatedQuestion);
+  };
+
+  const removeYesterdayQuestion = (question: WeekdayQuestion, index: number) => {
+    const updatedQuestion = {
+      ...question,
+      yesterday_question: question.yesterday_question.filter((_, i) => i !== index)
+    };
+    setEditingQuestion(updatedQuestion);
+  };
+
+  // Helper functions for trainee questions
+  const addTraineeQuestion = (question: WeekdayQuestion) => {
+    const updatedQuestion = {
+      ...question,
+      trainee_question: [...question.trainee_question, '']
+    };
+    setEditingQuestion(updatedQuestion);
+  };
+
+  const updateTraineeQuestion = (question: WeekdayQuestion, index: number, value: string) => {
+    const updatedQuestion = {
+      ...question,
+      trainee_question: question.trainee_question.map((q, i) => i === index ? value : q)
+    };
+    setEditingQuestion(updatedQuestion);
+  };
+
+  const removeTraineeQuestion = (question: WeekdayQuestion, index: number) => {
+    const updatedQuestion = {
+      ...question,
+      trainee_question: question.trainee_question.filter((_, i) => i !== index)
+    };
+    setEditingQuestion(updatedQuestion);
   };
 
   if (loading) {
     return (
       <div className="container mx-auto p-6">
-        <div className="text-center">Lade Fragen...</div>
+        <h1 className="text-2xl font-bold mb-6">Wochentags-Fragen verwalten</h1>
+        <p>Lade Fragen...</p>
       </div>
     );
   }
 
   return (
     <div className="container mx-auto p-6">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">
-          Weekday Questions Management
-        </h1>
-        <p className="text-gray-600">
-          Verwalte die wochentags-spezifischen Fragen für Berater
-        </p>
-      </div>
-
-      {/* Add New Question */}
-      <Card className="mb-6">
-        <CardHeader>
-          <CardTitle>Neue Frage hinzufügen</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Wochentag
-              </label>
-              <select
-                value={newQuestion.weekday}
-                onChange={(e) => setNewQuestion({...newQuestion, weekday: e.target.value})}
-                className="w-full p-2 border border-gray-300 rounded-md"
-              >
-                {weekdays.map(day => (
-                  <option key={day.value} value={day.value}>
-                    {day.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-            
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Fragetyp
-              </label>
-              <select
-                value={newQuestion.type}
-                onChange={(e) => setNewQuestion({...newQuestion, type: e.target.value as any})}
-                className="w-full p-2 border border-gray-300 rounded-md"
-              >
-                {questionTypes.map(type => (
-                  <option key={type.value} value={type.value}>
-                    {type.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div className="md:col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Frage
-              </label>
-              <textarea
-                value={newQuestion.question}
-                onChange={(e) => setNewQuestion({...newQuestion, question: e.target.value})}
-                className="w-full p-2 border border-gray-300 rounded-md"
-                rows={2}
-                placeholder="Geben Sie die Frage ein..."
-              />
-            </div>
-
-            <div className="flex items-center space-x-4">
-              <label className="flex items-center">
-                <input
-                  type="checkbox"
-                  checked={newQuestion.required}
-                  onChange={(e) => setNewQuestion({...newQuestion, required: e.target.checked})}
-                  className="mr-2"
-                />
-                Erforderlich
-              </label>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Reihenfolge
-                </label>
-                <input
-                  type="number"
-                  value={newQuestion.order}
-                  onChange={(e) => setNewQuestion({...newQuestion, order: parseInt(e.target.value)})}
-                  className="w-20 p-2 border border-gray-300 rounded-md"
-                  min="0"
-                />
-              </div>
-            </div>
-          </div>
-          
-          <div className="mt-4">
-            <Button
-              onClick={() => saveQuestion(newQuestion as WeekdayQuestion)}
-              className="bg-blue-600 hover:bg-blue-700 text-white"
-            >
-              Frage hinzufügen
+      <h1 className="text-2xl font-bold mb-6">Wochentags-Fragen verwalten</h1>
+      
+      {questions.length === 0 ? (
+        <Card>
+          <CardContent className="p-6">
+            <p className="text-gray-600 mb-4">Keine Fragen gefunden. Erstelle neue Fragen:</p>
+            <Button onClick={() => {
+              const newQuestion: WeekdayQuestion = {
+                weekday: 1,
+                yesterday_question: '',
+                today_questions: [''],
+                trainee_question: ''
+              };
+              setEditingQuestion(newQuestion);
+            }}>
+              Neue Fragen erstellen
             </Button>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="space-y-6">
+          {weekdays.map(weekday => {
+            const question = questions.find(q => q.weekday === weekday.value);
+            const isEditing = editingQuestion?.weekday === weekday.value;
+            
+            return (
+              <Card key={weekday.value}>
+                <CardHeader>
+                  <CardTitle>{weekday.label}</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {isEditing ? (
+                    <div className="space-y-4">
+                      {/* Gestern-Fragen */}
+                      <div>
+                        <label className="block text-sm font-medium mb-2">Fragen für gestern:</label>
+                        {editingQuestion.yesterday_question.map((q, index) => (
+                          <div key={index} className="flex gap-2 mb-2">
+                            <Input
+                              value={q}
+                              onChange={(e) => updateYesterdayQuestion(editingQuestion, index, e.target.value)}
+                              placeholder={`Gestern-Frage ${index + 1} eingeben...`}
+                            />
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => removeYesterdayQuestion(editingQuestion, index)}
+                            >
+                              Entfernen
+                            </Button>
+                          </div>
+                        ))}
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => addYesterdayQuestion(editingQuestion)}
+                        >
+                          Gestern-Frage hinzufügen
+                        </Button>
+                      </div>
 
-      {/* Questions List */}
-      <div className="grid gap-4">
-        {weekdays.map(day => {
-          const dayQuestions = questions.filter(q => q.weekday === day.value);
-          return (
-            <Card key={day.value}>
-              <CardHeader>
-                <CardTitle className="flex justify-between items-center">
-                  {day.label}
-                  <span className="text-sm font-normal text-gray-500">
-                    {dayQuestions.length} Fragen
-                  </span>
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                {dayQuestions.length === 0 ? (
-                  <p className="text-gray-500 text-center py-4">
-                    Keine Fragen für {day.label}
-                  </p>
-                ) : (
-                  <div className="space-y-3">
-                    {dayQuestions
-                      .sort((a, b) => a.order - b.order)
-                      .map(question => (
-                        <div key={question.id} className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
-                          <div className="flex-1">
-                            <div className="font-medium">{question.question}</div>
-                            <div className="text-sm text-gray-500">
-                              Typ: {questionTypes.find(t => t.value === question.type)?.label} | 
-                              {question.required ? ' Erforderlich' : ' Optional'} | 
-                              Reihenfolge: {question.order}
-                            </div>
-                          </div>
-                          <div className="flex space-x-2">
+                      {/* Heute-Fragen */}
+                      <div>
+                        <label className="block text-sm font-medium mb-2">Fragen für heute:</label>
+                        {editingQuestion.today_questions.map((q, index) => (
+                          <div key={index} className="flex gap-2 mb-2">
+                            <Input
+                              value={q}
+                              onChange={(e) => updateTodayQuestion(editingQuestion, index, e.target.value)}
+                              placeholder={`Frage ${index + 1} eingeben...`}
+                            />
                             <Button
-                              size="sm"
                               variant="outline"
-                              onClick={() => setEditingQuestion(question)}
-                            >
-                              Bearbeiten
-                            </Button>
-                            <Button
                               size="sm"
-                              variant="outline"
-                              onClick={() => deleteQuestion(question.id)}
-                              className="text-red-600 hover:text-red-700"
+                              onClick={() => removeTodayQuestion(editingQuestion, index)}
                             >
-                              Löschen
+                              Entfernen
                             </Button>
                           </div>
-                        </div>
-                      ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          );
-        })}
-      </div>
+                        ))}
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => addTodayQuestion(editingQuestion)}
+                        >
+                          Frage hinzufügen
+                        </Button>
+                      </div>
+
+                      {/* Trainee-Fragen */}
+                      <div>
+                        <label className="block text-sm font-medium mb-2">Fragen für Trainee:</label>
+                        {editingQuestion.trainee_question.map((q, index) => (
+                          <div key={index} className="flex gap-2 mb-2">
+                            <Input
+                              value={q}
+                              onChange={(e) => updateTraineeQuestion(editingQuestion, index, e.target.value)}
+                              placeholder={`Trainee-Frage ${index + 1} eingeben...`}
+                            />
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => removeTraineeQuestion(editingQuestion, index)}
+                            >
+                              Entfernen
+                            </Button>
+                          </div>
+                        ))}
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => addTraineeQuestion(editingQuestion)}
+                        >
+                          Trainee-Frage hinzufügen
+                        </Button>
+                      </div>
+
+                      {/* Speichern/Abbrechen */}
+                      <div className="flex gap-2">
+                        <Button onClick={() => saveQuestion(editingQuestion)}>
+                          Speichern
+                        </Button>
+                        <Button variant="outline" onClick={() => setEditingQuestion(null)}>
+                          Abbrechen
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {question ? (
+                        <>
+                          <div>
+                            <h4 className="font-medium text-gray-700">Gestern:</h4>
+                            <p className="text-gray-600">{question.yesterday_question}</p>
+                          </div>
+                          <div>
+                            <h4 className="font-medium text-gray-700">Heute:</h4>
+                            <ul className="list-disc list-inside text-gray-600">
+                              {question.today_questions.map((q, index) => (
+                                <li key={index}>{q}</li>
+                              ))}
+                            </ul>
+                          </div>
+                          <div>
+                            <h4 className="font-medium text-gray-700">Trainee:</h4>
+                            <p className="text-gray-600">{question.trainee_question}</p>
+                          </div>
+                        </>
+                      ) : (
+                        <p className="text-gray-500">Keine Fragen für {weekday.label} definiert</p>
+                      )}
+                      
+                      <Button
+                        variant="outline"
+                        onClick={() => {
+                          if (question) {
+                            setEditingQuestion(question);
+                          } else {
+                            const newQuestion: WeekdayQuestion = {
+                              weekday: weekday.value,
+                              yesterday_question: '',
+                              today_questions: [''],
+                              trainee_question: ''
+                            };
+                            setEditingQuestion(newQuestion);
+                          }
+                        }}
+                      >
+                        {question ? 'Bearbeiten' : 'Erstellen'}
+                      </Button>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }

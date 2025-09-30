@@ -6,6 +6,16 @@ export interface WeekdayQuestions {
   trainee: string;
 }
 
+export interface DatabaseWeekdayQuestion {
+  id: string;
+  weekday: number;
+  yesterday_question: string;
+  today_questions: string[];
+  trainee_question: string;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface WeeklyGoals {
   fa_weekly_target: number;
   eh_weekly_target: number;
@@ -37,8 +47,35 @@ export interface MonthlyAverages {
   eh_per_month: number;
 }
 
-// Weekday-specific questions
-export const getWeekdayQuestions = (weekday: number, isTrainee: boolean = false): WeekdayQuestions => {
+// Weekday-specific questions - now loads from database via API
+export const getWeekdayQuestions = async (weekday: number, isTrainee: boolean = false): Promise<WeekdayQuestions> => {
+  try {
+    // Only try to load from API if we're on the client side
+    if (typeof window !== 'undefined') {
+      const response = await fetch(`/api/weekday-questions?weekday=${weekday}`);
+      if (response.ok) {
+        const dbQuestion: DatabaseWeekdayQuestion = await response.json();
+        const baseQuestions: WeekdayQuestions = {
+          yesterday: dbQuestion.yesterday_question,
+          today: dbQuestion.today_questions,
+          trainee: dbQuestion.trainee_question
+        };
+        
+        if (isTrainee) {
+          return {
+            ...baseQuestions,
+            yesterday: baseQuestions.trainee
+          };
+        }
+        
+        return baseQuestions;
+      }
+    }
+  } catch (error) {
+    console.error('Error loading weekday questions from API:', error);
+  }
+
+  // Fallback to hardcoded questions if API fails
   const questions: Record<number, WeekdayQuestions> = {
     1: { // Montag
       yesterday: "Was sind deine drei Diamanten von den Samstagsschulungen?",
