@@ -3,8 +3,154 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
-import { useUser, SignOutButton } from '@clerk/nextjs';
+import { useUser } from '@clerk/nextjs';
 import { calculateProgressWithColor } from '@/lib/weekday-logic';
+
+interface Event {
+  id: string;
+  title: string;
+  description: string;
+  event_date: string;
+  start_time: string;
+  end_time: string;
+  location: string;
+  event_type: string;
+  is_recurring: boolean;
+  recurrence_days: number[];
+  event_speakers: Array<{
+    id: string;
+    role: string;
+    topic: string;
+    is_confirmed: boolean;
+    speakers: {
+      id: string;
+      first_name: string;
+      last_name: string;
+      company: string;
+      position: string;
+    };
+  }>;
+}
+
+function EventsSection() {
+  const [events, setEvents] = useState<Event[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    loadEvents();
+  }, []);
+
+  const loadEvents = async () => {
+    try {
+      const response = await fetch('/api/events?upcoming=true&limit=5');
+      if (response.ok) {
+        const result = await response.json();
+        setEvents(result.data || []);
+      }
+    } catch (error) {
+      console.error('Error loading events:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const weekdays = [
+    { value: 1, label: 'Mo' },
+    { value: 2, label: 'Di' },
+    { value: 3, label: 'Mi' },
+    { value: 4, label: 'Do' },
+    { value: 5, label: 'Fr' },
+    { value: 6, label: 'Sa' },
+    { value: 7, label: 'So' }
+  ];
+
+  if (loading) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-xl">📅 Veranstaltungen</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="text-center py-8">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+            <p className="text-gray-600">Lade Veranstaltungen...</p>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <div className="flex justify-between items-center">
+          <CardTitle className="text-xl">📅 Veranstaltungen</CardTitle>
+          <Link href="/speaker-registration">
+            <Button 
+              size="lg" 
+              className="bg-gradient-to-r from-yellow-400 to-yellow-600 hover:from-yellow-500 hover:to-yellow-700 text-white font-bold shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105"
+            >
+              🎤 Als Referent bewerben
+            </Button>
+          </Link>
+        </div>
+      </CardHeader>
+      <CardContent>
+        {events.length === 0 ? (
+          <div className="text-center py-8 text-gray-500">
+            <div className="text-4xl mb-4">📅</div>
+            <p>Keine kommenden Veranstaltungen</p>
+            <p className="text-sm mt-2">Veranstaltungen werden hier angezeigt</p>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {events.map((event) => (
+              <div key={event.id} className="border rounded-lg p-4 hover:bg-gray-50 transition-colors">
+                <div className="flex justify-between items-start">
+                  <div className="flex-1">
+                    <h3 className="font-semibold text-gray-900 mb-1">{event.title}</h3>
+                    <p className="text-sm text-gray-600 mb-2">{event.description}</p>
+                    <div className="flex items-center space-x-4 text-sm text-gray-500">
+                      <span>📅 {new Date(event.event_date).toLocaleDateString('de-DE')}</span>
+                      <span>🕐 {event.start_time} - {event.end_time}</span>
+                      <span>📍 {event.location}</span>
+                      {event.is_recurring && (
+                        <span className="text-blue-600">
+                          {event.recurrence_days.map(d => weekdays.find(w => w.value === d)?.label).join(', ')}
+                        </span>
+                      )}
+                    </div>
+                    {event.event_speakers && event.event_speakers.length > 0 && (
+                      <div className="mt-2">
+                        <p className="text-sm text-gray-600">Referenten:</p>
+                        <div className="flex flex-wrap gap-2 mt-1">
+                          {event.event_speakers.map((speaker, index) => (
+                            <span 
+                              key={index}
+                              className={`px-2 py-1 rounded text-xs ${
+                                speaker.is_confirmed 
+                                  ? 'bg-green-100 text-green-800' 
+                                  : 'bg-yellow-100 text-yellow-800'
+                              }`}
+                            >
+                              {speaker.speakers.first_name} {speaker.speakers.last_name}
+                              {speaker.speakers.company && ` (${speaker.speakers.company})`}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
 interface DashboardData {
   user: {
     id: string;
@@ -158,24 +304,6 @@ export default function SimpleDashboardPage() {
   const { user: userInfo, weeklyGoals, monthlyGoals, teamGoals, ownMonthlyProgress, teamMonthlyProgress, ownWeeklyProgress } = dashboardData;
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <div className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <div className="flex items-center">
-              <h1 className="text-xl font-bold text-gray-900">🎯 Dashboard</h1>
-            </div>
-            <div className="flex items-center space-x-4">
-              <span className="text-sm text-gray-600">
-                {userInfo.name?.split(' ')[0] || userInfo.name}
-              </span>
-              <SignOutButton>
-                <Button variant="outline">Abmelden</Button>
-              </SignOutButton>
-            </div>
-          </div>
-        </div>
-      </div>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         {/* Wochenziele */}
         <Card className="mb-6">
@@ -543,18 +671,7 @@ export default function SimpleDashboardPage() {
           </CardContent>
         </Card>
         {/* Veranstaltungen */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-xl">📅 Veranstaltungen</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-center py-8 text-gray-500">
-              <div className="text-4xl mb-4">📅</div>
-              <p>Keine kommenden Veranstaltungen</p>
-              <p className="text-sm mt-2">Veranstaltungen werden hier angezeigt</p>
-            </div>
-          </CardContent>
-        </Card>
+        <EventsSection />
       </div>
     </div>
   );

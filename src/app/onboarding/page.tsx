@@ -193,6 +193,7 @@ function OnboardingContent() {
           className="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
         >
           <option value="">Team auswählen</option>
+          <option value="GameChanger">GameChanger</option>
           <option value="Goalgetter">Goalgetter</option>
           <option value="Proud">Proud</option>
           <option value="Eagles">Eagles</option>

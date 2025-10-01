@@ -108,14 +108,6 @@ export default function AdminDashboard() {
 
   const adminPages = [
     {
-      title: 'Hierarchie-Management',
-      description: '🏢 Team-Hierarchie und Führungsstruktur verwalten',
-      href: '/admin/hierarchy',
-      icon: '🏢',
-      color: 'bg-gradient-to-r from-green-600 to-blue-600',
-      priority: 'high'
-    },
-    {
       title: 'Frequenz-Radar',
       description: '🌌 Drei-Ebenen-Radar: Zahlen → Spiegel → Frequenz',
       href: '/admin/frequency-radar',
@@ -137,6 +129,14 @@ export default function AdminDashboard() {
       href: '/admin/weekly-conversation',
       icon: '💬',
       color: 'bg-gradient-to-r from-green-600 to-blue-600',
+      priority: 'high'
+    },
+    {
+      title: 'Events & Referenten',
+      description: '📅 Veranstaltungen, Referenten und Topics verwalten',
+      href: '/admin/events-speakers',
+      icon: '📅',
+      color: 'bg-gradient-to-r from-orange-600 to-yellow-600',
       priority: 'high'
     },
     {
@@ -172,28 +172,12 @@ export default function AdminDashboard() {
       priority: 'high'
     },
     {
-      title: 'User-Management',
-      description: '👤 Benutzer erstellen, bearbeiten und verwalten',
-      href: '/admin/users',
-      icon: '👤',
+      title: 'Benutzer & Teams',
+      description: '👥 Benutzer und Teams verwalten',
+      href: '/admin/users-teams',
+      icon: '👥',
       color: 'bg-gradient-to-r from-blue-600 to-purple-600',
       priority: 'high'
-    },
-    {
-      title: 'Team-Management',
-      description: '👥 Teams erstellen, bearbeiten und verwalten',
-      href: '/admin/teams',
-      icon: '👥',
-      color: 'bg-gradient-to-r from-green-600 to-blue-600',
-      priority: 'high'
-    },
-    {
-      title: 'Organigramm',
-      description: 'Team-Hierarchie verwalten und Drag & Drop Organigramm',
-      href: '/admin',
-      icon: '🏢',
-      color: 'bg-blue-500',
-      priority: 'low'
     },
     {
       title: 'Wochentags-Fragen',
@@ -211,14 +195,6 @@ export default function AdminDashboard() {
       color: 'bg-green-500',
       priority: 'low'
     },
-    {
-      title: 'Events & Referenten',
-      description: 'Veranstaltungen und Referenten-Management',
-      href: '/admin/events',
-      icon: '📅',
-      color: 'bg-orange-500',
-      priority: 'low'
-    }
   ];
 
 

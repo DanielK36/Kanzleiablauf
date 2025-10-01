@@ -1,8 +1,6 @@
 import type { Metadata } from "next";
 import {
   ClerkProvider,
-  SignInButton,
-  SignUpButton,
   SignedIn,
   SignedOut,
   UserButton,
@@ -10,6 +8,8 @@ import {
 import Navigation from "@/components/navigation";
 import Footer from "@/components/Footer";
 import ConsentWrapper from "@/components/ConsentWrapper";
+import { AfterSignIn, AfterSignUp } from "@/components/redirects";
+import AuthButtons from "@/components/AuthButtons";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -27,7 +27,7 @@ export default function RootLayout({
   if (!publishableKey) {
     return (
       <html lang="de">
-        <body className="antialiased">
+        <body className="antialiased flex flex-col min-h-screen">
           <header className="bg-white shadow-sm border-b">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
               <div className="flex justify-between items-center h-16">
@@ -54,6 +54,8 @@ export default function RootLayout({
     <ClerkProvider>
       <html lang="de">
         <body className="antialiased flex flex-col min-h-screen">
+          <AfterSignIn />
+          <AfterSignUp />
           <SignedIn>
             <Navigation />
           </SignedIn>
@@ -66,18 +68,7 @@ export default function RootLayout({
                       Leadership System
                     </h1>
                   </div>
-                  <div className="flex items-center space-x-4">
-                    <SignInButton mode="modal">
-                      <button className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm font-medium">
-                        Anmelden
-                      </button>
-                    </SignInButton>
-                    <SignUpButton mode="modal">
-                      <button className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md text-sm font-medium">
-                        Registrieren
-                      </button>
-                    </SignUpButton>
-                  </div>
+                  <AuthButtons />
                 </div>
               </div>
             </header>

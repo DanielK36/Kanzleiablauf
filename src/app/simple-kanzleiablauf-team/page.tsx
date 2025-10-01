@@ -271,6 +271,7 @@ export default function SimpleKanzleiablaufTeamPage() {
   const [loading, setLoading] = useState(true);
   const [weekdayQuestions, setWeekdayQuestions] = useState<any>(null);
   const [availableTeamViews, setAvailableTeamViews] = useState<any[]>([]);
+  const [expandedMembers, setExpandedMembers] = useState<Set<string>>(new Set());
 
   // Get current weekday (1=Monday, 7=Sunday)
   const currentWeekday = new Date().getDay() || 7;
@@ -1088,52 +1089,65 @@ export default function SimpleKanzleiablaufTeamPage() {
               </CardContent>
             </Card>
           ) : (
-            filteredData.teamMembers.map((member: any) => (
-              <Card 
-                key={member.id} 
-                className="cursor-pointer hover:shadow-md transition-shadow duration-200"
-              >
-                <CardHeader className="pb-3">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <CardTitle className="text-lg">
-                        {member.firstName || member.name?.split(' ')[0] || member.name}
-                      </CardTitle>
-                      {member.isTrainee && (
-                        <Badge variant="secondary" className="text-xs">Trainee</Badge>
-                      )}
+            filteredData.teamMembers.map((member: any) => {
+              const isExpanded = expandedMembers.has(member.id);
+              
+              return (
+                <Card 
+                  key={member.id} 
+                  className="cursor-pointer hover:shadow-md transition-shadow duration-200"
+                  onClick={() => {
+                    const newExpanded = new Set(expandedMembers);
+                    if (isExpanded) {
+                      newExpanded.delete(member.id);
+                    } else {
+                      newExpanded.add(member.id);
+                    }
+                    setExpandedMembers(newExpanded);
+                  }}
+                >
+                  <CardHeader className="pb-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <CardTitle className="text-lg">
+                          {member.firstName || member.name?.split(' ')[0] || member.name}
+                        </CardTitle>
+                        {member.isTrainee && (
+                          <Badge variant="secondary" className="text-xs">Trainee</Badge>
+                        )}
+                        
+                        {/* Kleine Metriken-Kacheln */}
+                        <div className="grid grid-cols-8 gap-1">
+                          {metrics.map((metric) => {
+                            const achieved = member.yesterdayResults?.[`${metric.key}_actual` as keyof typeof member.yesterdayResults] as number || 0;
+                            const target = member.yesterdayGoals?.[`${metric.key}_daily_target` as keyof typeof member.yesterdayGoals] as number || 0;
+                            const hasResults = achieved > 0;
+                            
+                            return (
+                              <div 
+                                key={metric.key} 
+                                className={`text-center px-1 py-1 rounded text-xs w-10 h-10 flex flex-col justify-center ${
+                                  hasResults ? 'bg-green-100 border border-green-200' : 'bg-gray-100 border border-gray-200'
+                                }`}
+                              >
+                                <div className="font-medium text-gray-600 text-xs">{metric.label}</div>
+                                <div className="font-bold text-gray-900 text-xs">{achieved}/{target}</div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
                       
-                      {/* Kleine Metriken-Kacheln */}
-                      <div className="grid grid-cols-8 gap-1">
-                        {metrics.map((metric) => {
-                          const achieved = member.yesterdayResults?.[`${metric.key}_actual` as keyof typeof member.yesterdayResults] as number || 0;
-                          const target = member.yesterdayGoals?.[`${metric.key}_daily_target` as keyof typeof member.yesterdayGoals] as number || 0;
-                          const hasResults = achieved > 0;
-                          
-                          return (
-                            <div 
-                              key={metric.key} 
-                              className={`text-center px-1 py-1 rounded text-xs w-10 h-10 flex flex-col justify-center ${
-                                hasResults ? 'bg-green-100 border border-green-200' : 'bg-gray-100 border border-gray-200'
-                              }`}
-                            >
-                              <div className="font-medium text-gray-600 text-xs">{metric.label}</div>
-                              <div className="font-bold text-gray-900 text-xs">{achieved}/{target}</div>
-                            </div>
-                          );
-                        })}
+                      <div className="text-xs text-gray-400">
+                        {isExpanded ? '▼' : '▶'}
                       </div>
                     </div>
-                    
-                    <div className="text-xs text-gray-400">
-                      ▶
-                    </div>
-                  </div>
-                </CardHeader>
+                  </CardHeader>
                 
                 {/* Aufklappbarer Inhalt */}
-                <div>
-                  <CardContent className="space-y-4">
+                {isExpanded && (
+                  <div>
+                    <CardContent className="space-y-4">
                     {/* Zielzahlen und Ergebnisse Tabelle */}
                     <div>
                       <h4 className="font-medium text-gray-900 mb-3">Zielzahlen und Ergebnisse</h4>
@@ -1298,10 +1312,12 @@ export default function SimpleKanzleiablaufTeamPage() {
                         })}
                       </div>
                     </div>
-                  </CardContent>
-                </div>
+                    </CardContent>
+                  </div>
+                )}
               </Card>
-            ))
+              );
+            })
           )}
         </div>
 

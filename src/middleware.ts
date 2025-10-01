@@ -4,10 +4,13 @@ const isProtectedRoute = createRouteMatcher([
   '/simple-kanzleiablauf-team(.*)',
   '/simple-dashboard(.*)',
   '/simple-kanzleiablauf-v3(.*)',
+  '/onboarding(.*)',
   '/admin(.*)',
   '/api/dashboard-data(.*)',
   '/api/simple-daily-entry(.*)',
   '/api/simple-goals(.*)',
+  '/api/users(.*)',
+  '/api/consent(.*)',
   '/api/admin(.*)',
 ]);
 

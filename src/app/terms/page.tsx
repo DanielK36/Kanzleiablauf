@@ -1,67 +1,144 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import Link from 'next/link';
 
 export default function TermsPage() {
   return (
-    <div className="min-h-screen bg-gray-50 p-4">
+    <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-4xl mx-auto">
         <Card>
           <CardHeader>
-            <CardTitle className="text-2xl">Nutzungsbedingungen (AGB)</CardTitle>
-            <p className="text-gray-600">Stand: September 2025</p>
+            <CardTitle className="text-3xl font-bold text-center">📄 Allgemeine Geschäftsbedingungen (AGB)</CardTitle>
+            <p className="text-gray-600 text-center mt-2">Stand: Oktober 2025</p>
           </CardHeader>
           <CardContent className="space-y-6">
             <section>
-              <h2 className="text-xl font-semibold mb-3">1. Geltungsbereich</h2>
+              <h2 className="text-2xl font-bold mb-3">1. Geltungsbereich</h2>
               <p className="text-gray-700">
-                Diese Bedingungen gelten für die kostenfreie Nutzung des Portals „Führungsradar / Team-Radar" durch selbstständige Partner.
+                Diese Allgemeinen Geschäftsbedingungen (AGB) regeln die Nutzung der von Daniel Kuhlen betriebenen 
+                Online-Plattform (im Folgenden: „Plattform").
+              </p>
+              <p className="text-gray-700 mt-2">
+                Die Plattform dient der Erfassung, Auswertung und Darstellung von Ziel- und Leistungsdaten 
+                im Rahmen der Zusammenarbeit von selbstständigen Finanzdienstleistern („Nutzer") und deren Führungskräften.
               </p>
             </section>
 
             <section>
-              <h2 className="text-xl font-semibold mb-3">2. Leistungen des Betreibers</h2>
-              <ul className="list-disc list-inside text-gray-700 space-y-1">
-                <li>Das Portal ist ein Werkzeug zur Eingabe, Speicherung und Auswertung von Zielen und Leistungsdaten.</li>
-                <li>Es besteht kein Anspruch auf ständige Verfügbarkeit oder fehlerfreie Nutzung.</li>
-              </ul>
-            </section>
-
-            <section>
-              <h2 className="text-xl font-semibold mb-3">3. Pflichten der Nutzer</h2>
-              <ul className="list-disc list-inside text-gray-700 space-y-1">
-                <li>Eingaben erfolgen freiwillig und wahrheitsgemäß.</li>
-                <li>Keine Eingabe sensibler oder sachfremder Daten (z. B. Gesundheitsdaten).</li>
-                <li>Exportierte Daten (PDF/CSV) sind ausschließlich für die interne Nutzung bestimmt.</li>
-              </ul>
-            </section>
-
-            <section>
-              <h2 className="text-xl font-semibold mb-3">4. Zugriff durch Führungskräfte</h2>
-              <ul className="list-disc list-inside text-gray-700 space-y-1">
-                <li>Führungskräfte haben Zugriff auf die Daten ihrer zugeordneten Partner (gemäß Organisationsstruktur).</li>
-                <li>Mit Austritt endet der Zugriff automatisch.</li>
-              </ul>
-            </section>
-
-            <section>
-              <h2 className="text-xl font-semibold mb-3">5. Datenschutz</h2>
+              <h2 className="text-2xl font-bold mb-3">2. Vertragsverhältnis</h2>
               <p className="text-gray-700">
-                Es gilt die separate <Link href="/privacy" className="text-blue-600 hover:underline">Datenschutzerklärung</Link>.
+                Die Nutzung der Plattform erfolgt ausschließlich durch selbstständige Partner im Rahmen ihrer 
+                Zusammenarbeit mit Telis Finanz AG (nachfolgend „Organisation").
+              </p>
+              <p className="text-gray-700 mt-2">
+                Ein gesondertes Vertragsverhältnis zwischen den Nutzern und Daniel Kuhlen entsteht durch die Nutzung nicht.
               </p>
             </section>
 
             <section>
-              <h2 className="text-xl font-semibold mb-3">6. Haftung</h2>
-              <ul className="list-disc list-inside text-gray-700 space-y-1">
-                <li>Der Betreiber übernimmt keine Haftung für Verluste, die durch falsche Eingaben oder fehlerhafte Auswertungen entstehen.</li>
-                <li>Nutzung erfolgt auf eigene Verantwortung.</li>
+              <h2 className="text-2xl font-bold mb-3">3. Leistungen</h2>
+              <p className="text-gray-700 mb-2">(1) Die Plattform ermöglicht es den Nutzern:</p>
+              <ul className="list-disc list-inside text-gray-700 space-y-1 ml-4">
+                <li>Persönliche Ziele und Ist-Zahlen zu erfassen,</li>
+                <li>die eigene Zielerreichung zu verfolgen,</li>
+                <li>Führungskräften die Team- und Partnerentwicklung zu visualisieren.</li>
               </ul>
+              <p className="text-gray-700 mt-2">
+                (2) Der Leistungsumfang kann laufend angepasst und erweitert werden.
+              </p>
+              <p className="text-gray-700 mt-2">
+                (3) Ein Anspruch auf ständige Verfügbarkeit besteht nicht. Kurzfristige Ausfälle oder Wartungen sind möglich.
+              </p>
             </section>
 
             <section>
-              <h2 className="text-xl font-semibold mb-3">7. Änderungen</h2>
+              <h2 className="text-2xl font-bold mb-3">4. Pflichten der Nutzer</h2>
               <p className="text-gray-700">
-                Der Betreiber behält sich vor, diese Bedingungen anzupassen. Über wesentliche Änderungen werden die Nutzer informiert.
+                (1) Die Eingabe von Daten erfolgt freiwillig und eigenverantwortlich durch die Nutzer.
+              </p>
+              <p className="text-gray-700 mt-2">
+                (2) Es dürfen ausschließlich sachlich richtige und eigene Daten eingegeben werden.
+              </p>
+              <p className="text-gray-700 mt-2">
+                (3) Die Nutzer sind verpflichtet, ihre Zugangsdaten geheim zu halten und Dritten nicht zugänglich zu machen.
+              </p>
+            </section>
+
+            <section>
+              <h2 className="text-2xl font-bold mb-3">5. Datenzugriff</h2>
+              <p className="text-gray-700">
+                (1) Jeder Nutzer hat Zugriff auf seine eigenen Daten.
+              </p>
+              <p className="text-gray-700 mt-2">
+                (2) Die jeweilige Führungskraft erhält Zugriff auf die Daten der ihr zugeordneten Partner (gemäß Organisationsstruktur).
+              </p>
+              <p className="text-gray-700 mt-2">
+                (3) Der Plattform-Administrator (Daniel Kuhlen) hat Zugriff auf alle Daten, ausschließlich zur Verwaltung und Auswertung.
+              </p>
+            </section>
+
+            <section>
+              <h2 className="text-2xl font-bold mb-3">6. Datenschutz</h2>
+              <p className="text-gray-700">
+                Die Verarbeitung personenbezogener Daten richtet sich nach der Datenschutzerklärung (separates Dokument).
+              </p>
+            </section>
+
+            <section>
+              <h2 className="text-2xl font-bold mb-3">7. Nutzung unentgeltlich</h2>
+              <p className="text-gray-700">
+                Die Nutzung der Plattform ist für die Nutzer unentgeltlich.
+              </p>
+              <p className="text-gray-700 mt-2">
+                Ein Anspruch auf bestimmte Funktionen oder dauerhafte Verfügbarkeit besteht nicht.
+              </p>
+            </section>
+
+            <section>
+              <h2 className="text-2xl font-bold mb-3">8. Haftung</h2>
+              <p className="text-gray-700">
+                (1) Die Nutzung erfolgt auf eigene Verantwortung der Nutzer.
+              </p>
+              <p className="text-gray-700 mt-2">
+                (2) Daniel Kuhlen übernimmt keine Gewähr für die Richtigkeit, Vollständigkeit oder Aktualität 
+                der eingegebenen oder dargestellten Daten.
+              </p>
+              <p className="text-gray-700 mt-2">
+                (3) Eine Haftung für Schäden, die durch fehlerhafte Eingaben, Missbrauch oder technische Störungen 
+                entstehen, ist ausgeschlossen – außer bei Vorsatz oder grober Fahrlässigkeit.
+              </p>
+            </section>
+
+            <section>
+              <h2 className="text-2xl font-bold mb-3">9. Beendigung der Nutzung</h2>
+              <p className="text-gray-700">
+                (1) Nutzer können die Nutzung jederzeit einstellen.
+              </p>
+              <p className="text-gray-700 mt-2">
+                (2) Mit Beendigung des zugrundeliegenden Organisationsvertrags (z. B. Telis-Partnervertrag) 
+                erlischt der Zugriff automatisch.
+              </p>
+              <p className="text-gray-700 mt-2">
+                (3) Die Daten werden gemäß der Datenschutzerklärung gespeichert, anonymisiert oder gelöscht.
+              </p>
+            </section>
+
+            <section>
+              <h2 className="text-2xl font-bold mb-3">10. Änderungen der AGB</h2>
+              <p className="text-gray-700">
+                Daniel Kuhlen behält sich das Recht vor, diese AGB jederzeit zu ändern. 
+                Nutzer werden über wesentliche Änderungen rechtzeitig informiert.
+              </p>
+            </section>
+
+            <section>
+              <h2 className="text-2xl font-bold mb-3">11. Schlussbestimmungen</h2>
+              <p className="text-gray-700">
+                (1) Es gilt deutsches Recht.
+              </p>
+              <p className="text-gray-700 mt-2">
+                (2) Gerichtsstand ist – soweit zulässig – Mönchengladbach.
+              </p>
+              <p className="text-gray-700 mt-2">
+                (3) Sollten einzelne Bestimmungen dieser AGB unwirksam sein, bleibt die Gültigkeit der übrigen Bestimmungen unberührt.
               </p>
             </section>
           </CardContent>
@@ -70,4 +147,3 @@ export default function TermsPage() {
     </div>
   );
 }
-

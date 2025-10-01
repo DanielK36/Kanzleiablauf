@@ -65,6 +65,9 @@ export async function POST(request: NextRequest) {
     }
     
     const body = await request.json();
+    console.log('🔍 POST /api/users - body:', body);
+    
+    const supabase = createSupabaseServerClient();
 
     // Prüfen ob User bereits existiert
     const { data: existingUser } = await supabase
@@ -162,11 +165,14 @@ export async function POST(request: NextRequest) {
       }
       
       // 2. User mit team_id erstellen
+      // Generate unique email from clerk_id if not provided
+      const userEmail = body.email || `${userId}@clerk.temp`;
+      
       const result = await supabase
         .from('users')
         .insert({
           clerk_id: userId,
-          email: body.email || '',
+          email: userEmail,
           firstname: body.firstName,
           lastname: body.lastName,
           name: body.name,

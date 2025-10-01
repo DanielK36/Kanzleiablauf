@@ -110,8 +110,20 @@ export async function GET(request: NextRequest) {
 
     // 4. Datums-Berechnungen
     const monthlyNow = new Date();
-    const startOfMonth = new Date(monthlyNow.getFullYear(), monthlyNow.getMonth(), 1).toISOString();
-    const endOfMonth = new Date(monthlyNow.getFullYear(), monthlyNow.getMonth() + 1, 0, 23, 59, 59).toISOString();
+    const currentDay = monthlyNow.getDate();
+    
+    // Wenn heute der 1. ist, gehören die Daten noch zum Vormonat
+    let monthForCalculation;
+    if (currentDay === 1) {
+      // Am 1. Oktober gehört der Eintrag noch zum September
+      monthForCalculation = new Date(monthlyNow.getFullYear(), monthlyNow.getMonth() - 1, 1);
+    } else {
+      // Ab dem 2. Oktober beginnt der neue Monat
+      monthForCalculation = new Date(monthlyNow.getFullYear(), monthlyNow.getMonth(), 1);
+    }
+    
+    const startOfMonth = new Date(monthForCalculation.getFullYear(), monthForCalculation.getMonth(), 1).toISOString();
+    const endOfMonth = new Date(monthForCalculation.getFullYear(), monthForCalculation.getMonth() + 1, 0, 23, 59, 59).toISOString();
 
     // 5. Daily Entries laden (eigene)
     const { data: ownDailyEntries, error: ownDailyEntriesError } = await supabase
@@ -342,12 +354,53 @@ export async function GET(request: NextRequest) {
     // directTeamUsersError wird jetzt oben behandelt
 
     // 9. Team Monats-Ist-Zahlen berechnen (für "Orga Monatsziele")
-    const teamUserIds = directTeamUsers?.map(u => u.id) || [];
+    // WICHTIG: Alle Team-Mitglieder inklusive Subteams sammeln (wie bei teamTotals)
+    const allTeamUserIds = [];
+    const processedUserIdsForMonthly = new Set();
+    
+    // 1. Direct Team Users hinzufügen
+    if (directTeamUsers) {
+      for (const user of directTeamUsers) {
+        if (!processedUserIdsForMonthly.has(user.id) && !user.is_team_leader) {
+          allTeamUserIds.push(user.id);
+          processedUserIdsForMonthly.add(user.id);
+        }
+      }
+    }
+    
+    // 2. Current User hinzufügen (falls noch nicht hinzugefügt)
+    if (user && !processedUserIdsForMonthly.has(user.id)) {
+      const isAlreadyTeamLeader = subteams.some(subteam => subteam.teamLeader.id === user.id);
+      if (!isAlreadyTeamLeader) {
+        allTeamUserIds.push(user.id);
+        processedUserIdsForMonthly.add(user.id);
+      }
+    }
+    
+    // 3. Subteam-Mitglieder hinzufügen
+    if (subteams) {
+      for (const subteam of subteams) {
+        // Team-Leader hinzufügen
+        if (!processedUserIdsForMonthly.has(subteam.teamLeader.id)) {
+          allTeamUserIds.push(subteam.teamLeader.id);
+          processedUserIdsForMonthly.add(subteam.teamLeader.id);
+        }
+        // Subteam-Mitglieder hinzufügen
+        if (subteam.members) {
+          for (const member of subteam.members) {
+            if (!processedUserIdsForMonthly.has(member.id)) {
+              allTeamUserIds.push(member.id);
+              processedUserIdsForMonthly.add(member.id);
+            }
+          }
+        }
+      }
+    }
     
     const { data: teamDailyEntries, error: teamDailyEntriesError } = await supabase
       .from('daily_entries')
       .select('*')
-      .in('user_id', teamUserIds)
+      .in('user_id', allTeamUserIds)
       .gte('entry_date', startOfMonth)
       .lte('entry_date', endOfMonth);
 
@@ -388,27 +441,27 @@ export async function GET(request: NextRequest) {
     
     // Alle Team-Mitglieder sammeln: directTeamUsers + currentUser + subteams
     const allTeamUsers = [];
-    const processedUserIds = new Set(); // Duplikate vermeiden
+    const processedUserIds2 = new Set(); // Duplikate vermeiden
     
     // 1. Direct Team Users hinzufügen (aber nicht Team-Leader, die werden später als Subteams hinzugefügt)
     if (directTeamUsers) {
       for (const user of directTeamUsers) {
-        if (!processedUserIds.has(user.id) && !user.is_team_leader) {
+        if (!processedUserIds2.has(user.id) && !user.is_team_leader) {
           allTeamUsers.push(user);
-          processedUserIds.add(user.id);
+          processedUserIds2.add(user.id);
         }
       }
     }
     
     // 1.5. Current User hinzufügen (falls noch nicht hinzugefügt)
     // ABER: Wenn currentUser als team_leader in subteams ist, nicht doppelt hinzufügen
-    if (currentUser && !processedUserIds.has(currentUser.id)) {
+    if (currentUser && !processedUserIds2.has(currentUser.id)) {
       // Prüfe ob currentUser bereits als team_leader in subteams ist
       const isAlreadyTeamLeader = subteams.some(subteam => subteam.teamLeader.id === currentUser.id);
       
       if (!isAlreadyTeamLeader) {
         allTeamUsers.push(currentUser);
-        processedUserIds.add(currentUser.id);
+        processedUserIds2.add(currentUser.id);
       } else {
       }
     }
@@ -417,16 +470,16 @@ export async function GET(request: NextRequest) {
     if (subteams) {
       for (const subteam of subteams) {
         // Team-Leader hinzufügen (falls noch nicht hinzugefügt)
-        if (!processedUserIds.has(subteam.teamLeader.id)) {
+        if (!processedUserIds2.has(subteam.teamLeader.id)) {
           allTeamUsers.push(subteam.teamLeader);
-          processedUserIds.add(subteam.teamLeader.id);
+          processedUserIds2.add(subteam.teamLeader.id);
         }
         // Subteam-Mitglieder hinzufügen
         if (subteam.members) {
           for (const member of subteam.members) {
-            if (!processedUserIds.has(member.id)) {
+            if (!processedUserIds2.has(member.id)) {
               allTeamUsers.push(member);
-              processedUserIds.add(member.id);
+              processedUserIds2.add(member.id);
             }
           }
         }

@@ -429,9 +429,12 @@ export default function SimpleKanzleiablaufPage() {
             <h1 className="text-2xl font-bold text-gray-900 mb-4">
               Bitte melden Sie sich an
             </h1>
-            <p className="text-gray-600">
+            <p className="text-gray-600 mb-4">
               Sie müssen sich anmelden, um die Berater-Seite zu verwenden.
             </p>
+            <Link href="/sign-in">
+              <Button>Zur Anmeldung</Button>
+            </Link>
           </div>
         </div>
       </div>

@@ -129,6 +129,64 @@ export async function POST(request: NextRequest) {
     let updateData = { ...existingTargets };
     
     if (body.type === 'monthly') {
+      // Bestimme für welchen Monat die Ziele gespeichert werden
+      const now = new Date();
+      const currentDay = now.getDate();
+      
+      let targetMonth;
+      if (currentDay >= 20) {
+        // Ab dem 20. werden Ziele für den Folgemonat gespeichert
+        targetMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+      } else {
+        // Vor dem 20. für den aktuellen Monat
+        targetMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+      }
+      
+      // Format: "YYYY-MM"
+      const targetMonthKey = `${targetMonth.getFullYear()}-${String(targetMonth.getMonth() + 1).padStart(2, '0')}`;
+      
+      // Hole existierende monthly_targets
+      const { data: userData } = await supabase
+        .from('users')
+        .select('monthly_targets')
+        .eq('clerk_id', userId)
+        .single();
+      
+      if (!userData) {
+        return NextResponse.json({ 
+          success: false, 
+          error: 'User not found' 
+        }, { status: 404 });
+      }
+      
+      // Erweitere monthly_targets JSONB mit neuem Monat
+      const monthlyTargets = userData.monthly_targets || {};
+      monthlyTargets[targetMonthKey] = {
+        fa_monthly_target: body.fa || 0,
+        eh_monthly_target: body.eh || 0,
+        new_appointments_monthly_target: body.newAppointments || 0,
+        recommendations_monthly_target: body.recommendations || 0,
+        tiv_invitations_monthly_target: body.tivInvitations || 0,
+        bav_checks_monthly_target: body.bavChecks || 0,
+        taa_invitations_monthly_target: body.taaInvitations || 0,
+        tgs_registrations_monthly_target: body.tgsRegistrations || 0,
+      };
+      
+      // Speichere in monthly_targets JSONB Spalte
+      const { error: monthlyError } = await supabase
+        .from('users')
+        .update({ monthly_targets: monthlyTargets })
+        .eq('clerk_id', userId);
+      
+      if (monthlyError) {
+        console.error('❌ Error saving monthly targets:', monthlyError);
+        return NextResponse.json({ 
+          success: false, 
+          error: monthlyError.message 
+        }, { status: 500 });
+      }
+      
+      // Auch in personal_targets für Backward-Kompatibilität (aktueller Monat)
       updateData = {
         ...updateData,
         fa_monthly_target: body.fa || 0,

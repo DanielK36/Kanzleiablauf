@@ -72,6 +72,7 @@ export async function POST(request: NextRequest) {
       .from('consents')
       .insert({
         user_id: user.id,
+        clerk_id: userId, // Also save clerk_id for consistency
         consent_version: consentVersion,
         consent_given: consentGiven
       });

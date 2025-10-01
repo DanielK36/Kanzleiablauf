@@ -2,7 +2,8 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useUser } from '@clerk/nextjs';
+import { useUser, SignOutButton } from '@clerk/nextjs';
+import { Button } from '@/components/ui/button';
 
 interface UserData {
   role: string;
@@ -104,6 +105,9 @@ export default function Navigation() {
             <span className="text-sm text-gray-600">
               {userData?.name?.split(' ')[0] || user?.firstName || 'Benutzer'}
             </span>
+            <SignOutButton redirectUrl="/">
+              <Button variant="outline" size="sm">Abmelden</Button>
+            </SignOutButton>
           </div>
         </div>
       </div>
