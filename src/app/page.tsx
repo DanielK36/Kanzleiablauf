@@ -10,7 +10,7 @@ export default function HomePage() {
           Leadership Enablement System
         </h1>
         <p className="text-xl text-gray-600 mb-8">
-          Ein umfassendes Führungssystem für überforderte Handelsvertreter-Leiter
+          Team Performance Dashboard für Führungskräfte
         </p>
         <div className="space-y-4">
           <div className="bg-white p-6 rounded-lg shadow-md">
