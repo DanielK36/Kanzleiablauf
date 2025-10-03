@@ -29,22 +29,17 @@ export default function ConsentWrapper({ children }: ConsentWrapperProps) {
 
   const checkConsent = async () => {
     try {
-      console.log('🔍 ConsentWrapper - Checking consent...');
-      
       const response = await fetch('/api/consent');
-      console.log('🔍 ConsentWrapper - Response status:', response.status);
       
       if (response.ok) {
         const data = await response.json();
-        console.log('🔍 ConsentWrapper - Response data:', data);
         setHasConsent(data.hasConsent);
       } else {
         const errorData = await response.json();
-        console.log('❌ ConsentWrapper - Error response:', errorData);
         setHasConsent(false);
       }
     } catch (error) {
-      console.error('❌ ConsentWrapper - Error checking consent:', error);
+      console.error('Error checking consent:', error);
       setHasConsent(false);
     } finally {
       setLoading(false);

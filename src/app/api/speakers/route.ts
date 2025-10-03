@@ -83,7 +83,7 @@ export async function POST(request: NextRequest) {
     const { data: existingSpeaker } = await supabase
       .from('speakers')
       .select('id')
-      .eq('user_id', user.id)
+      .eq('email', user.email)
       .single();
 
     if (existingSpeaker) {
@@ -96,12 +96,12 @@ export async function POST(request: NextRequest) {
     const { data: newSpeaker, error } = await supabase
       .from('speakers')
       .insert({
-        user_id: user.id,
         first_name: user.firstname || speakerData.first_name,
         last_name: user.lastname || speakerData.last_name,
         email: user.email || speakerData.email,
-        ...speakerData,
-        is_approved: false // Admin muss freigeben
+        bio: speakerData.bio,
+        expertise_areas: speakerData.expertise_areas || speakerData.selected_topics || [],
+        is_verified: false // Admin muss freigeben
       })
       .select()
       .single();

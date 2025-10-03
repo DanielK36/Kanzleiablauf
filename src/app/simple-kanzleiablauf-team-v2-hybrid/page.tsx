@@ -256,7 +256,7 @@ interface TeamData {
   };
 }
 
-export default function SimpleKanzleiablaufTeamPage() {
+export default function SimpleKanzleiablaufTeamV2HybridPage() {
   const { user, isLoaded } = useUser();
   const [teamData, setTeamData] = useState<TeamData | null>(null);
   const [activeView, setActiveView] = useState<string>('');
@@ -272,6 +272,11 @@ export default function SimpleKanzleiablaufTeamPage() {
   const [weekdayQuestions, setWeekdayQuestions] = useState<any>(null);
   const [availableTeamViews, setAvailableTeamViews] = useState<any[]>([]);
   const [expandedMembers, setExpandedMembers] = useState<Set<string>>(new Set());
+  
+  // Neue States für korrekte TODOs und Ziele 
+      
+  
+  
 
   // Get current weekday (1=Monday, 7=Sunday)
   const currentWeekday = new Date().getDay() || 7;
@@ -439,62 +444,72 @@ export default function SimpleKanzleiablaufTeamPage() {
   };
 
   // Team View Navigation - äußerer Rahmen
-  const teamViews = (() => {
-    const isAdmin = teamData?.currentUser?.role === 'admin';
-    const currentUserTeam = teamData?.currentUser?.team_name;
-    
-    if (isAdmin) {
-      // Admins sehen alle Teams
-      return [
-        { id: 'current-user', label: '👤 Meine Ansicht', description: '' },
-        ...availableTeamViews.map(teamView => ({
-          id: teamView.id,
-          label: `👥 ${teamView.name}`,
-          description: ''
-        }))
-      ];
-    } else {
-      // Nicht-Admins sehen nur ihren eigenen Team-Tab
-      const ownTeamView = availableTeamViews.find(teamView => 
-        teamView.name === currentUserTeam || teamView.id === currentUserTeam
-      );
-      
-      if (ownTeamView) {
-        return [{
-          id: ownTeamView.id,
-          label: `👥 ${ownTeamView.name}`,
-          description: ''
-        }];
-      } else {
-        // Fallback: Zeige "Meine Ansicht" wenn kein Team gefunden
-        return [{
-          id: 'current-user',
-          label: '👤 Meine Ansicht',
-          description: 'Aktuelle Team-Ansicht'
-        }];
-      }
-    }
-  })();
+  const teamViews = [
+    // Nur für Admins: "Meine Ansicht" hinzufügen
+    ...(teamData?.currentUser?.role === 'admin' ? [{ id: 'current-user', label: '👤 Meine Ansicht', description: 'Aktuelle Team-Ansicht' }] : []),
+    ...availableTeamViews.map(teamView => ({
+      id: teamView.id,
+      label: `👥 ${teamView.name}`,
+      description: teamView.role
+    }))
+  ];
 
-  // Load Team Data (nur einmal beim ersten Laden)
-  const loadTeamData = async () => {
+  // Load Team Today Data (TODOs von gestern + heutige Ziele)
+  const loadTeamTodayData = async () => {
     try {
-      const response = await fetch('/api/dashboard-data');
+      const response = await fetch('/api/team-today-data');
       const data = await response.json();
       
       if (data.success) {
-        // Transform dashboard data to team data format
-        const transformedData = transformDashboardDataToTeamData(data.data);
+        console.log('📊 Team TODAY data loaded:', data.data);
+        setTeamTodayData(data.data);
+      } else {
+        console.error('❌ Failed to load team today data:', data.error);
+      }
+    } catch (error) {
+      console.error('❌ Error loading team today data:', error);
+    }
+  };
+
+  // Load Team Data using V2 API
+  const loadTeamData = async (teamView = 'mine') => {
+    try {
+      let url = '/api/team-view-v2?';
+      
+      if (teamView === 'mine') {
+        url += 'role=leader';
+      } else if (teamView === 'all') {
+        url += 'role=admin';
+      } else {
+        url += `team=${teamView}&include_hierarchy=true`;
+      }
+
+      const response = await fetch(url);
+      const v2Data = await response.json();
+      
+      if (v2Data.success) {
+        // Simple transformation from V2 to dashboard format
+        const transformedData = transformDashboardDataToTeamData({
+          teamMembers: v2Data.data.teamMembers,
+          currentUser: v2Data.data.currentUser,
+          subteams: [],
+          teamGoals: v2Data.data.teamTotalGoals || {},
+          teamTotals: v2Data.data.teamYesterdayResults || {},
+          teamTodayGoals: v2Data.data.teamTotalGoals || {},
+          teamWeeklyProgress: v2Data.data.teamWeeklyProgress || {},
+          teamMonthlyProgress: v2Data.data.teamMonthlyProgress || {},
+          availableTeamViews: v2Data.data.availableTeams || []
+        });
         setTeamData(transformedData);
         
-        // Set available team views
-        if (data.data.availableTeamViews) {
-          setAvailableTeamViews(data.data.availableTeamViews);
-          // Set first team as active view (not current-user) - nur beim ersten Laden
-          if (data.data.availableTeamViews.length > 0 && activeView === '') {
-            setActiveView(data.data.availableTeamViews[0].id);
+        if (v2Data.data.availableTeams) {
+          setAvailableTeamViews(v2Data.data.availableTeams);
+          if (v2Data.data.availableTeams.length > 0 && activeView === '') {
+            setActiveView(v2Data.data.availableTeams[0].id);
           }
         }
+        
+        
       }
     } catch (error) {
       console.error('Error loading team data:', error);
@@ -519,11 +534,22 @@ export default function SimpleKanzleiablaufTeamPage() {
     const filteredDirectUsers = teamData.teamMembers?.filter(member => {
       // teamName kann undefined sein, verwende team_name als Fallback
       const memberTeamName = member.teamName;
+      console.log('🔍 Filtering member:', member.name, 'teamName:', member.teamName, 'selectedTeam:', selectedTeam, 'match:', memberTeamName === selectedTeam);
+      console.log('🔍 Member details:', {
+        id: member.id,
+        name: member.name,
+        teamName: member.teamName,
+        hasYesterdayResults: !!member.yesterdayResults,
+        hasWeekdayAnswers: !!(member as any).weekdayAnswers,
+        yesterdayResultsKeys: Object.keys(member.yesterdayResults || {}),
+        weekdayAnswersKeys: Object.keys((member as any).weekdayAnswers || {})
+      });
       return memberTeamName === selectedTeam;
     }) || [];
     
     // EINFACHE LOGIK: Wenn currentUser das ausgewählte Team hat, verwende ihn direkt
     let currentUserAsLeader: any = null;
+    console.log('🔍 Current user check:', teamData.currentUser?.name, 'team_name:', teamData.currentUser?.team_name, 'selectedTeam:', selectedTeam);
     
     if (teamData.currentUser?.team_name === selectedTeam) {
       // Finde currentUser in teamMembers um die daily entry Daten zu bekommen
@@ -536,6 +562,9 @@ export default function SimpleKanzleiablaufTeamPage() {
         isTeamLeader: true,
         isCurrentUser: true
       };
+      console.log('🔍 Using currentUser as team leader:', currentUserAsLeader.name);
+      console.log('🔍 CurrentUser in teamMembers found:', !!currentUserInTeamMembers);
+      console.log('🔍 CurrentUser yesterdayResults:', currentUserInTeamMembers?.yesterdayResults);
     } else {
       // Wenn currentUser nicht das ausgewählte Team hat, finde den Team-Leader für das ausgewählte Team
       const teamLeader = teamData.teamMembers?.find(member => 
@@ -549,6 +578,7 @@ export default function SimpleKanzleiablaufTeamPage() {
           isTeamLeader: true,
           isCurrentUser: false
         };
+        console.log('🔍 Using team leader as currentUserAsLeader:', currentUserAsLeader.name);
       }
     }
     
@@ -597,9 +627,12 @@ export default function SimpleKanzleiablaufTeamPage() {
     // Current user als Team-Leader hinzufügen (falls zutreffend und noch nicht vorhanden)
     if (currentUserAsLeader) {
       const isAlreadyIncluded = allTeamMembers.some(member => member.id === currentUserAsLeader.id);
+      console.log('🔍 currentUserAsLeader check:', currentUserAsLeader.name, 'isAlreadyIncluded:', isAlreadyIncluded);
+      console.log('🔍 currentUserAsLeader yesterdayResults:', currentUserAsLeader.yesterdayResults);
       
       if (!isAlreadyIncluded) {
         allTeamMembers.unshift(currentUserAsLeader);
+        console.log('🔍 Added currentUserAsLeader to allTeamMembers');
       } else {
         // Update existing member to be team leader
         const existingIndex = allTeamMembers.findIndex(member => member.id === currentUserAsLeader.id);
@@ -610,6 +643,7 @@ export default function SimpleKanzleiablaufTeamPage() {
             isTeamLeader: true,
             isCurrentUser: true
           };
+          console.log('🔍 Updated existing member with currentUserAsLeader data');
         }
       }
     }
@@ -934,26 +968,6 @@ export default function SimpleKanzleiablaufTeamPage() {
     }
   };
 
-  // Load Today Focus
-  const loadTodayFocus = async () => {
-    try {
-      const response = await fetch('/api/kanzleiablauf-team-focus');
-      if (response.ok) {
-        const data = await response.json();
-        if (data.success && data.data) {
-          setTodayFocus({
-            training: data.data.training || '',
-            phoneParty: data.data.phone_party || '',
-            trainingResponsible: data.data.training_responsible || '',
-            phonePartyResponsible: data.data.phone_party_responsible || ''
-          });
-        }
-      }
-    } catch (error) {
-      console.error('Error loading today focus:', error);
-    }
-  };
-
   // Save Today Focus
   const handleSave = async () => {
     try {
@@ -977,7 +991,6 @@ export default function SimpleKanzleiablaufTeamPage() {
     if (isLoaded && user) {
       loadTeamData();
       loadWeekdayQuestions();
-      loadTodayFocus();
     }
   }, [isLoaded, user]);
 
@@ -1037,6 +1050,7 @@ export default function SimpleKanzleiablaufTeamPage() {
                   key={view.id}
                   onClick={() => {
                     setActiveView(view.id);
+                    loadTeamData(view.id);
                   }}
                   className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
                     activeView === view.id
@@ -1056,6 +1070,18 @@ export default function SimpleKanzleiablaufTeamPage() {
 
         {/* Team Content - zeigt die Ansicht des gewählten Users */}
         {activeView && (() => {
+          console.log('🔍 DEBUG: Before filtering - API Data structure:', {
+            teamMembersCount: teamData?.teamMembers?.length || 0,
+            teamMembers: teamData?.teamMembers?.map((member: any) => ({
+              id: member.id,
+              name: member.name,
+              team_name: member.team_name,
+              hasYesterdayResults: !!member.yesterdayResults,
+              yesterdayResultsKeys: Object.keys(member.yesterdayResults || {}),
+              hasTodayGoals: !!member.todayGoals
+            })),
+            currentUser: teamData?.currentUser
+          });
           
           const filteredData = getFilteredTeamData(activeView);
           if (!filteredData) return null;
@@ -1068,15 +1094,13 @@ export default function SimpleKanzleiablaufTeamPage() {
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-               {metrics.map((metric) => {
-                 // Use today's actuals from all team members (not yesterday's results)
-                 const achieved = filteredData.teamMembers?.reduce((sum: number, member: any) => {
-                   return sum + (member.todayActuals?.[`${metric.key}_actual` as keyof typeof member.todayActuals] as number || 0);
-                 }, 0) || 0;
-                 // Calculate target from yesterday goals of all team members
-                 const target = filteredData.teamMembers?.reduce((sum: number, member: any) => {
-                   return sum + (member.yesterdayGoals?.[`${metric.key}_daily_target` as keyof typeof member.yesterdayGoals] as number || 0);
-                 }, 0) || 0;
+              {metrics.map((metric) => {
+                // Use filtered team yesterday results
+                const achieved = filteredData.teamYesterdayResults?.[`${metric.key}_actual` as keyof typeof filteredData.teamYesterdayResults] as number || 0;
+                // Calculate target from yesterday goals of all team members
+                const target = filteredData.teamMembers?.reduce((sum: number, member: any) => {
+                  return sum + (member.yesterdayGoals?.[`${metric.key}_daily_target` as keyof typeof member.yesterdayGoals] as number || 0);
+                }, 0) || 0;
                 const progress = getProgress(achieved, target);
                 
                 return (
@@ -1135,12 +1159,12 @@ export default function SimpleKanzleiablaufTeamPage() {
                           <Badge variant="secondary" className="text-xs">Trainee</Badge>
                         )}
                         
-                         {/* Kleine Metriken-Kacheln */}
-                         <div className="grid grid-cols-8 gap-1">
-                           {metrics.map((metric) => {
-                             const achieved = member.todayActuals?.[`${metric.key}_actual` as keyof typeof member.todayActuals] as number || 0;
-                             const target = member.yesterdayGoals?.[`${metric.key}_daily_target` as keyof typeof member.yesterdayGoals] as number || 0;
-                             const hasResults = achieved > 0;
+                        {/* Kleine Metriken-Kacheln */}
+                        <div className="grid grid-cols-8 gap-1">
+                          {metrics.map((metric) => {
+                            const achieved = member.yesterdayResults?.[`${metric.key}_actual` as keyof typeof member.yesterdayResults] as number || 0;
+                            const target = member.yesterdayGoals?.[`${metric.key}_daily_target` as keyof typeof member.yesterdayGoals] as number || 0;
+                            const hasResults = achieved > 0;
                             
                             return (
                               <div 
@@ -1182,10 +1206,10 @@ export default function SimpleKanzleiablaufTeamPage() {
                             </tr>
                           </thead>
                           <tbody>
-                             {metrics.map((metric) => {
-                               const target = member.yesterdayGoals?.[`${metric.key}_daily_target` as keyof typeof member.yesterdayGoals] as number || 0;
-                               const achieved = member.todayActuals?.[`${metric.key}_actual` as keyof typeof member.todayActuals] as number || 0;
-                               const progress = getProgress(achieved, target);
+                            {metrics.map((metric) => {
+                              const target = member.yesterdayGoals?.[`${metric.key}_daily_target` as keyof typeof member.yesterdayGoals] as number || 0;
+                              const achieved = member.yesterdayResults?.[`${metric.key}_actual` as keyof typeof member.yesterdayResults] as number || 0;
+                              const progress = getProgress(achieved, target);
                               
                               return (
                                 <tr key={metric.key}>
@@ -1214,35 +1238,37 @@ export default function SimpleKanzleiablaufTeamPage() {
                         rows={3}
                         value={moodFeedback}
                         onChange={(e) => setMoodFeedback(e.target.value)}
-                        onClick={(e) => e.stopPropagation()}
                         placeholder=""
                         className="w-full"
                       />
                     </div>
 
                     {/* ToDos abhaken und Fragen von gestern - nebeneinander */}
-                    {(((member.yesterdayResults?.todos && member.yesterdayResults.todos.length > 0) || member.yesterdayResults?.charisma_training) || 
-                      (member.yesterdayResults?.highlight_yesterday || member.yesterdayResults?.appointments_next_week || member.yesterdayResults?.weekly_improvement)) && (
+                    {(() => {
+                      const hasYesterdayTodos = Array.isArray(member.yesterdayResults?.todos) && member.yesterdayResults.todos.length > 0;
+                      const hasCharismaTraining = member.yesterdayResults?.charisma_training;
+                      const hasQuestions = member.yesterdayResults?.highlight_yesterday || member.yesterdayResults?.appointments_next_week || member.yesterdayResults?.weekly_improvement;
+                      return hasYesterdayTodos || hasCharismaTraining || hasQuestions;
+                    })() && (
                       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                         {/* ToDos abhaken */}
-                        {((member.yesterdayResults?.todos && member.yesterdayResults.todos.length > 0) || member.yesterdayResults?.charisma_training) && (
+                        {(() => {
+                          const hasYesterdayTodos = Array.isArray(member.yesterdayResults?.todos) && member.yesterdayResults.todos.length > 0;
+                          const hasCharismaTraining = member.yesterdayResults?.charisma_training;
+                          return hasYesterdayTodos || hasCharismaTraining;
+                        })() && (
                           <div>
                             <h4 className="font-medium text-gray-900 mb-3">ToDos von gestern:</h4>
                             <div className="space-y-2">
-                              {/* Alle Todos anzeigen (abgehakt und nicht abgehakt) */}
-                              {member.yesterdayResults.todos && member.yesterdayResults.todos.map((todo: string, index: number) => {
-                                const isCompleted = member.yesterdayResults?.todos_completed?.[index];
-                                return (
+                              {/* Gestern's TODOs (bereits als abgehakt angezeigt) */}
+                              {Array.isArray(member.yesterdayResults?.todos) && member.yesterdayResults.todos.map((todo: string, index: number) => (
                                   <div key={index} className="flex items-center space-x-2">
-                                    <span className={isCompleted ? "text-green-600" : "text-gray-400"}>
-                                      {isCompleted ? "✓" : "○"}
-                                    </span>
-                                    <span className={isCompleted ? "line-through text-gray-500" : "text-gray-900"}>
+                                    <span className="text-green-600">✓</span>
+                                    <span className="line-through text-gray-500">
                                       {todo}
                                     </span>
                                   </div>
-                                );
-                              })}
+                                ))}
                               {/* Charisma-Training als abgehaktes Todo */}
                               {member.yesterdayResults?.charisma_training && (
                                 <div className="flex items-center space-x-2">
@@ -1362,13 +1388,32 @@ export default function SimpleKanzleiablaufTeamPage() {
                       return sum + (member.weeklyProgress?.[`${metric.key}_actual` as keyof typeof member.weeklyProgress] as number || 0);
                     }, 0) || 0;
                     
+                    // DEBUG: Log für Daniel's Wochenzahlen
+                    if (metric.key === 'fa' && filteredData.teamMembers?.some((m: any) => m.name === 'Daniel Kuhlen')) {
+                      console.log('🔍 DANIEL WEEKLY DEBUG:', {
+                        metric: metric.key,
+                        weeklyTarget,
+                        weeklyCurrent,
+                        teamMembers: filteredData.teamMembers?.map((m: any) => ({
+                          name: m.name,
+                          fa_weekly_target: m.weeklyProgress?.fa_weekly_target,
+                          fa_actual: m.weeklyProgress?.fa_actual
+                        }))
+                      });
+                    }
                     
                     // Monatsziel = Team-Ziel des Team-Leaders aus personal_targets
                     const teamLeader = filteredData.teamMembers?.find(member => member.isTeamLeader);
+                    console.log('🔍 Team Leader for monthly target:', teamLeader?.name, 'isTeamLeader:', teamLeader?.isTeamLeader, 'personal_targets:', teamLeader?.personal_targets);
+                    console.log('🔍 All team members:', filteredData.teamMembers?.map(m => ({ name: m.name, isTeamLeader: m.isTeamLeader, teamName: m.teamName })));
+                    console.log('🔍 DEBUG: teamData.currentUser:', teamData.currentUser);
+                    console.log('🔍 DEBUG: teamData.debug_currentUser:', (teamData as any).debug_currentUser);
                     // Fallback wieder hinzufügen: personal_targets aus teamLeader oder currentUser
                     const personalTargets = teamLeader?.personal_targets || teamData.currentUser?.personal_targets;
                     const monthlyTarget = personalTargets?.[`${metric.key}_team_target`] as number || 0;
                     
+                    console.log('🔍 DEBUG: personalTargets:', personalTargets);
+                    console.log('🔍 DEBUG: monthlyTarget for', metric.key, ':', monthlyTarget);
                     
                     // Monatsist = Summe der Monatsist-Zahlen aller Teammitglieder
                     const monthlyCurrent = filteredData.teamMembers?.reduce((sum: number, member: any) => {
@@ -1441,10 +1486,8 @@ export default function SimpleKanzleiablaufTeamPage() {
               <CardContent>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                   {metrics.map((metric) => {
-                    // Add up todayGoals from all displayed team members
-                    const target = filteredData.teamMembers?.reduce((sum: number, member: any) => {
-                      return sum + (member.todayGoals?.[`${metric.key}_daily_target` as keyof typeof member.todayGoals] as number || 0);
-                    }, 0) || 0;
+                    // Today's goals aus team data
+                    const target = teamData.teamTodayGoals?.[`${metric.key}_daily_target`] || 0;
                     
                     return (
                       <div key={metric.key} className="p-3 bg-gray-50 rounded-lg text-center">
@@ -1459,28 +1502,12 @@ export default function SimpleKanzleiablaufTeamPage() {
 
             {/* Individual Member Today's Goals */}
             <div className="space-y-4">
-              {filteredData.teamMembers.map((member: any) => {
-                const isExpanded = expandedMembers.has(member.id);
-                
-                return (
+              {filteredData.teamMembers.map((member: any) => (
                 <Card 
                   key={`today-${member.id}`} 
                   className="cursor-pointer hover:shadow-md transition-shadow duration-200"
                 >
-                  <CardHeader 
-                    className="pb-3"
-                    onClick={() => {
-                      setExpandedMembers(prev => {
-                        const newSet = new Set(prev);
-                        if (newSet.has(member.id)) {
-                          newSet.delete(member.id);
-                        } else {
-                          newSet.add(member.id);
-                        }
-                        return newSet;
-                      });
-                    }}
-                  >
+                  <CardHeader className="pb-3">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
                         <CardTitle className="text-lg">
@@ -1509,14 +1536,13 @@ export default function SimpleKanzleiablaufTeamPage() {
                       </div>
                       
                       <div className="text-xs text-gray-400">
-                        {isExpanded ? '▼' : '▶'}
+                        ▶
                       </div>
                     </div>
                   </CardHeader>
                   
                   {/* Aufklappbarer Inhalt für Heute */}
-                  {isExpanded && (
-                    <div>
+                  <div>
                     <CardContent className="space-y-4">
                       {/* Heute Ziele - Große Kacheln */}
                       <div>
@@ -1616,11 +1642,9 @@ export default function SimpleKanzleiablaufTeamPage() {
                     )}
 
                     </CardContent>
-                    </div>
-                  )}
+                  </div>
                 </Card>
-                );
-              })}
+              ))}
             </div>
 
 
@@ -1639,7 +1663,6 @@ export default function SimpleKanzleiablaufTeamPage() {
                       rows={3}
                       value={todayFocus.training}
                       onChange={(e) => setTodayFocus(prev => ({ ...prev, training: e.target.value }))}
-                      onClick={(e) => e.stopPropagation()}
                       placeholder="Trainingsthema eingeben..."
                     />
                   </div>
@@ -1652,7 +1675,6 @@ export default function SimpleKanzleiablaufTeamPage() {
                       rows={3}
                       value={todayFocus.phoneParty}
                       onChange={(e) => setTodayFocus(prev => ({ ...prev, phoneParty: e.target.value }))}
-                      onClick={(e) => e.stopPropagation()}
                       placeholder="Zeit eingeben..."
                     />
                   </div>
@@ -1667,7 +1689,6 @@ export default function SimpleKanzleiablaufTeamPage() {
                       className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       value={todayFocus.trainingResponsible}
                       onChange={(e) => setTodayFocus(prev => ({ ...prev, trainingResponsible: e.target.value }))}
-                      onClick={(e) => e.stopPropagation()}
                     >
                       <option value="">Bitte auswählen...</option>
                       {filteredData.teamMembers.map((member: any) => (
@@ -1686,7 +1707,6 @@ export default function SimpleKanzleiablaufTeamPage() {
                       className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       value={todayFocus.phonePartyResponsible}
                       onChange={(e) => setTodayFocus(prev => ({ ...prev, phonePartyResponsible: e.target.value }))}
-                      onClick={(e) => e.stopPropagation()}
                     >
                       <option value="">Bitte auswählen...</option>
                       {filteredData.teamMembers.map((member: any) => (

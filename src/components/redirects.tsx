@@ -10,10 +10,12 @@ export function AfterSignIn() {
 
   useEffect(() => {
     if (isLoaded && user) {
-      // Check if this is a sign-in (not sign-up)
-      const isSignIn = sessionStorage.getItem('clerk_sign_in') === 'true';
-      if (isSignIn) {
-        sessionStorage.removeItem('clerk_sign_in');
+      // Always redirect to simple-dashboard after sign-in
+      // Check if we're not already on a protected page
+      const currentPath = window.location.pathname;
+      const protectedPages = ['/simple-dashboard', '/simple-kanzleiablauf-team', '/simple-kanzleiablauf-v3', '/speaker-registration'];
+      
+      if (!protectedPages.includes(currentPath) && currentPath !== '/onboarding') {
         router.push('/simple-dashboard');
       }
     }

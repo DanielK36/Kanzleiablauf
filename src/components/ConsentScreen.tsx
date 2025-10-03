@@ -19,8 +19,6 @@ export default function ConsentScreen({ onConsent }: ConsentScreenProps) {
   const handleConsent = async (accepted: boolean) => {
     setLoading(true);
     try {
-      console.log('🔍 ConsentScreen - Sending consent:', { accepted });
-      
       const response = await fetch('/api/consent', {
         method: 'POST',
         headers: {
@@ -31,24 +29,21 @@ export default function ConsentScreen({ onConsent }: ConsentScreenProps) {
           consentVersion: '2025-09'
         }),
       });
-
-      console.log('🔍 ConsentScreen - Response status:', response.status);
       
       if (response.ok) {
         const result = await response.json();
-        console.log('🔍 ConsentScreen - Response data:', result);
         
         onConsent(accepted);
         if (accepted) {
-          // Weiterleitung zum Onboarding
-          router.push('/onboarding');
+          // Weiterleitung zum Simple Dashboard
+          router.push('/simple-dashboard');
         } else {
           // Logout bei Ablehnung
           window.location.href = '/api/auth/logout';
         }
       } else {
         const errorData = await response.json();
-        console.error('❌ ConsentScreen - Fehler beim Speichern der Einwilligung:', errorData);
+        console.error('Fehler beim Speichern der Einwilligung:', errorData);
         alert('Fehler beim Speichern der Einwilligung: ' + (errorData.error || 'Unbekannter Fehler'));
       }
     } catch (error) {

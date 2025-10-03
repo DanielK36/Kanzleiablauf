@@ -276,15 +276,11 @@ export async function GET(request: NextRequest) {
     
     
     if (directSubordinatesError) {
+      console.error('Error loading direct subordinates:', directSubordinatesError);
     } else if (directSubordinates && directSubordinates.length > 0) {
-      
-      // Direkte Untergebene in direkte Mitarbeiter und Team-Leader aufteilen
-      const directEmployees = directSubordinates.filter(u => !u.is_team_leader);
-      const teamLeaders = directSubordinates.filter(u => u.is_team_leader);
-      
-      
-      // Direkte Mitarbeiter zu directTeamUsers hinzufügen (nur direkte Untergebene, keine Team-Leader)
+      // User hat direkte Untergebene
       directTeamUsers = directSubordinates.filter(u => !u.is_team_leader);
+      const teamLeaders = directSubordinates.filter(u => u.is_team_leader);
       
       // Für jeden Team-Leader: Subteam-Mitglieder laden
       for (const teamLeader of teamLeaders) {
@@ -292,7 +288,6 @@ export async function GET(request: NextRequest) {
           .from('users')
           .select('id, name, role, team_id, team_name, personal_targets, parent_leader_id')
           .eq('parent_leader_id', teamLeader.id);
-        
         
         if (!subteamMembersError && subteamMembers) {
           subteams.push({
@@ -303,49 +298,9 @@ export async function GET(request: NextRequest) {
         }
       }
     } else {
-      
-      // Check if hierarchy fields exist and are populated
-      const { data: allUsers, error: allUsersError } = await supabase
-        .from('users')
-        .select('id, name, role, team_id, team_name, personal_targets, parent_leader_id, is_team_leader')
-        .neq('id', user.id); // Exclude current user
-      
-      if (!allUsersError && allUsers) {
-        
-        // For development: show all users as direct team members if no hierarchy is set
-        if (allUsers.filter(u => u.parent_leader_id).length === 0) {
-          directTeamUsers = allUsers.filter(u => !u.is_team_leader);
-          const teamLeaders = allUsers.filter(u => u.is_team_leader);
-          
-          for (const teamLeader of teamLeaders) {
-            subteams.push({
-              teamLeader: teamLeader,
-              members: [], // No sub-members for now
-              isSubteam: true
-            });
-          }
-        } else {
-          // Hierarchy is set up, but current user has no direct subordinates
-          // Marcel hat keine direkten Untergebenen -> nur eigenes Team anzeigen
-          directTeamUsers = [];
-          subteams = [];
-          
-          // Eigenes Team als "Subteam" hinzufügen (ohne Team-Leader)
-          if (user.team_name) {
-            subteams.push({
-              teamLeader: {
-                id: user.id,
-                name: user.name,
-                team_name: user.team_name,
-                is_team_leader: true, // Marcel ist der Team-Leader für sein eigenes Team
-                personal_targets: user.personal_targets // WICHTIG: personal_targets hinzufügen
-              },
-              members: [], // Keine zusätzlichen Mitglieder
-              isSubteam: true
-            });
-          }
-        }
-      }
+      // User hat keine direkten Untergebenen - zeige nur sich selbst
+      directTeamUsers = [];
+      subteams = [];
     }
     
 
@@ -436,17 +391,49 @@ export async function GET(request: NextRequest) {
     });
     
 
+    // Lade Team-Mitglieder basierend auf User-Rolle
+    let allTeamMembersBasedOnTeamName = [];
+    let allTeamMembersError = null;
+    
+    if (user.role === 'admin') {
+      // Admins sehen alle Teams
+      const { data, error } = await supabase
+        .from('users')
+        .select('id, name, role, team_id, team_name, personal_targets, parent_leader_id, is_team_leader')
+        .not('team_name', 'is', null);
+      
+      allTeamMembersBasedOnTeamName = data || [];
+      allTeamMembersError = error;
+    } else {
+      // Nicht-Admins sehen nur ihre Hierarchie
+      allTeamMembersBasedOnTeamName = [
+        user, // Current user
+        ...directTeamUsers, // Direct subordinates
+        ...subteams.flatMap(subteam => [subteam.teamLeader, ...subteam.members]) // Subteam members
+      ];
+    }
+
     // 10. Team Members mit Daten aufbauen
     const teamMembers = [];
     
-    // Alle Team-Mitglieder sammeln: directTeamUsers + currentUser + subteams
+    // Alle Team-Mitglieder sammeln: ALLE TEAM MITGLIEDERN statt nur direkte
     const allTeamUsers = [];
     const processedUserIds2 = new Set(); // Duplikate vermeiden
     
-    // 1. Direct Team Users hinzufügen (aber nicht Team-Leader, die werden später als Subteams hinzugefügt)
+    // 1. ALLE Team-Mitglieder hinzufügen basierend auf team_name
+    if (allTeamMembersBasedOnTeamName) {
+      for (const user of allTeamMembersBasedOnTeamName) {
+        if (!processedUserIds2.has(user.id)) {
+          allTeamUsers.push(user);
+          processedUserIds2.add(user.id);
+        }
+      }
+    }
+    
+    // 1.1. Erweitere um direkte Untergebene für Hierarchie-Zwecke
     if (directTeamUsers) {
       for (const user of directTeamUsers) {
-        if (!processedUserIds2.has(user.id) && !user.is_team_leader) {
+        if (!processedUserIds2.has(user.id)) {
           allTeamUsers.push(user);
           processedUserIds2.add(user.id);
         }
@@ -522,42 +509,33 @@ export async function GET(request: NextRequest) {
       // yesterdayStr ist bereits oben definiert
       
       const yesterdayEntry = userDailyEntries?.find(entry => entry.entry_date === yesterdayStr);
-      const latestEntry = userDailyEntries?.[0]; // Neuester Eintrag für todayGoals und todayAnswers
+      const todayEntry = userDailyEntries?.find(entry => entry.entry_date === todayStr); // HEUTE's Eintrag NUR für todayGoals
+      const latestEntry = userDailyEntries?.[0]; // Neuester Eintrag für other data
 
-      // Debug-Logs für alle User
-      if (teamUser.name === 'Daniel Kuhlen' || teamUser.name === 'Marcel Jansen') {
-      }
+      
 
-      // WICHTIG: Nur wenn latestEntry von heute oder gestern ist, sonst 0
-      const isRecentEntry = latestEntry && (
-        latestEntry.entry_date === todayStr || 
-        latestEntry.entry_date === yesterdayStr
-      );
-
-      // Yesterday Results (Ist-Werte aus heutigem Eintrag, nur wenn aktuell)
+      // Yesterday Results (NUR aus yesterdayEntry, nicht latestEntry)
       const yesterdayResults = {
-        fa_actual: isRecentEntry ? (latestEntry?.fa_count || 0) : 0,
-        eh_actual: isRecentEntry ? (latestEntry?.eh_count || 0) : 0,
-        new_appointments_actual: isRecentEntry ? (latestEntry?.new_appointments || 0) : 0,
-        recommendations_actual: isRecentEntry ? (latestEntry?.recommendations || 0) : 0,
-        tiv_invitations_actual: isRecentEntry ? (latestEntry?.tiv_invitations || 0) : 0,
-        bav_checks_actual: isRecentEntry ? (latestEntry?.bav_checks || 0) : 0,
-        taa_invitations_actual: isRecentEntry ? (latestEntry?.taa_invitations || 0) : 0,
-        tgs_registrations_actual: isRecentEntry ? (latestEntry?.tgs_registrations || 0) : 0,
-        todos_completed: isRecentEntry && Array.isArray(latestEntry?.todos_completed) 
-          ? latestEntry.todos_completed
+        fa_actual: yesterdayEntry ? (yesterdayEntry?.fa_count || 0) : 0,
+        eh_actual: yesterdayEntry ? (yesterdayEntry?.eh_count || 0) : 0,
+        new_appointments_actual: yesterdayEntry ? (yesterdayEntry?.new_appointments || 0) : 0,
+        recommendations_actual: yesterdayEntry ? (yesterdayEntry?.recommendations || 0) : 0,
+        tiv_invitations_actual: yesterdayEntry ? (yesterdayEntry?.tiv_invitations || 0) : 0,
+        bav_checks_actual: yesterdayEntry ? (yesterdayEntry?.bav_checks || 0) : 0,
+        taa_invitations_actual: yesterdayEntry ? (yesterdayEntry?.taa_invitations || 0) : 0,
+        tgs_registrations_actual: yesterdayEntry ? (yesterdayEntry?.tgs_registrations || 0) : 0,
+        todos_completed: yesterdayEntry && Array.isArray(yesterdayEntry?.todos_completed) 
+          ? yesterdayEntry.todos_completed
           : [],
-        // Alle Todos anzeigen (nicht nur abgehakte) - aus today_todos JSONB
-        todos: isRecentEntry && Array.isArray(latestEntry?.today_todos) 
-          ? latestEntry.today_todos
-          : [],
-        mood_feedback: isRecentEntry ? (latestEntry?.mood_feedback || '') : '',
+        // GESTERN'S Todos aus yesterdayEntry
+        todos: Array.isArray(yesterdayEntry?.today_todos) ? yesterdayEntry.today_todos : [],
+        mood_feedback: yesterdayEntry ? (yesterdayEntry?.mood_feedback || '') : '',
         // Fragen-Antworten von gestern
-        highlight_yesterday: isRecentEntry ? (latestEntry?.highlight_yesterday || '') : '',
-        appointments_next_week: isRecentEntry ? (latestEntry?.appointments_next_week || 0) : 0,
-        improvement_today: isRecentEntry ? (latestEntry?.improvement_today || '') : '',
-        weekly_improvement: isRecentEntry ? (latestEntry?.weekly_improvement || '') : '',
-        charisma_training: isRecentEntry ? (latestEntry?.charisma_training || false) : false,
+        highlight_yesterday: yesterdayEntry ? (yesterdayEntry?.highlight_yesterday || '') : '',
+        appointments_next_week: yesterdayEntry ? (yesterdayEntry?.appointments_next_week || 0) : 0,
+        improvement_today: yesterdayEntry ? (yesterdayEntry?.improvement_today || '') : '',
+        weekly_improvement: yesterdayEntry ? (yesterdayEntry?.weekly_improvement || '') : '',
+        charisma_training: yesterdayEntry ? (yesterdayEntry?.charisma_training || false) : false,
       };
 
       // Personal Targets für Weekly/Monthly Goals
@@ -565,45 +543,68 @@ export async function GET(request: NextRequest) {
 
       // Yesterday Goals (Ziele aus gestrigem Eintrag, nur wenn aktuell)
       const yesterdayGoals = {
-        fa_daily_target: (yesterdayEntry && yesterdayEntry.entry_date === yesterdayStr) ? (yesterdayEntry?.fa_daily_target || 0) : 0,
-        eh_daily_target: (yesterdayEntry && yesterdayEntry.entry_date === yesterdayStr) ? (yesterdayEntry?.eh_daily_target || 0) : 0,
-        new_appointments_daily_target: (yesterdayEntry && yesterdayEntry.entry_date === yesterdayStr) ? (yesterdayEntry?.new_appointments_daily_target || 0) : 0,
-        recommendations_daily_target: (yesterdayEntry && yesterdayEntry.entry_date === yesterdayStr) ? (yesterdayEntry?.recommendations_daily_target || 0) : 0,
-        tiv_invitations_daily_target: (yesterdayEntry && yesterdayEntry.entry_date === yesterdayStr) ? (yesterdayEntry?.tiv_invitations_daily_target || 0) : 0,
-        bav_checks_daily_target: (yesterdayEntry && yesterdayEntry.entry_date === yesterdayStr) ? (yesterdayEntry?.bav_checks_daily_target || 0) : 0,
-        taa_invitations_daily_target: (yesterdayEntry && yesterdayEntry.entry_date === yesterdayStr) ? (yesterdayEntry?.taa_invitations_daily_target || 0) : 0,
-        tgs_registrations_daily_target: (yesterdayEntry && yesterdayEntry.entry_date === yesterdayStr) ? (yesterdayEntry?.tgs_registrations_daily_target || 0) : 0,
+        // Gestrige Ziele KORREKT laden:
+        // Wenn gestriger Eintrag existiert: verwende exakte Werte (auch 0!)
+        // Wenn kein gestriger Eintrag: verwende 0 als Fallback
+        fa_daily_target: yesterdayEntry && yesterdayEntry.entry_date === yesterdayStr ? 
+          yesterdayEntry.fa_daily_target : 0,
+        eh_daily_target: yesterdayEntry && yesterdayEntry.entry_date === yesterdayStr ? 
+          yesterdayEntry.eh_daily_target : 0,
+        new_appointments_daily_target: yesterdayEntry && yesterdayEntry.entry_date === yesterdayStr ? 
+          yesterdayEntry.new_appointments_daily_target : 0,
+        recommendations_daily_target: yesterdayEntry && yesterdayEntry.entry_date === yesterdayStr ? 
+          yesterdayEntry.recommendations_daily_target : 0,
+        tiv_invitations_daily_target: yesterdayEntry && yesterdayEntry.entry_date === yesterdayStr ? 
+          yesterdayEntry.tiv_invitations_daily_target : 0,
+        bav_checks_daily_target: yesterdayEntry && yesterdayEntry.entry_date === yesterdayStr ? 
+          yesterdayEntry.bav_checks_daily_target : 0,
+        taa_invitations_daily_target: yesterdayEntry && yesterdayEntry.entry_date === yesterdayStr ? 
+          yesterdayEntry.taa_invitations_daily_target : 0,
+        tgs_registrations_daily_target: yesterdayEntry && yesterdayEntry.entry_date === yesterdayStr ? 
+          yesterdayEntry.tgs_registrations_daily_target : 0,
       };
 
-      // Today Goals (aus neuestem Eintrag, nur wenn aktuell)
+      // Today Goals (NUR aus heute's Eintrag, oder 0 wenn kein heutiger Eintrag)
       const todayGoals = {
-        fa_daily_target: isRecentEntry ? (latestEntry?.fa_daily_target || 0) : 0,
-        eh_daily_target: isRecentEntry ? (latestEntry?.eh_daily_target || 0) : 0,
-        new_appointments_daily_target: isRecentEntry ? (latestEntry?.new_appointments_daily_target || 0) : 0,
-        recommendations_daily_target: isRecentEntry ? (latestEntry?.recommendations_daily_target || 0) : 0,
-        tiv_invitations_daily_target: isRecentEntry ? (latestEntry?.tiv_invitations_daily_target || 0) : 0,
-        bav_checks_daily_target: isRecentEntry ? (latestEntry?.bav_checks_daily_target || 0) : 0,
-        taa_invitations_daily_target: isRecentEntry ? (latestEntry?.taa_invitations_daily_target || 0) : 0,
-        tgs_registrations_daily_target: isRecentEntry ? (latestEntry?.tgs_registrations_daily_target || 0) : 0,
+        fa_daily_target: todayEntry ? (todayEntry.fa_daily_target || 0) : 0,
+        eh_daily_target: todayEntry ? (todayEntry.eh_daily_target || 0) : 0,
+        new_appointments_daily_target: todayEntry ? (todayEntry.new_appointments_daily_target || 0) : 0,
+        recommendations_daily_target: todayEntry ? (todayEntry.recommendations_daily_target || 0) : 0,
+        tiv_invitations_daily_target: todayEntry ? (todayEntry.tiv_invitations_daily_target || 0) : 0,
+        bav_checks_daily_target: todayEntry ? (todayEntry.bav_checks_daily_target || 0) : 0,
+        taa_invitations_daily_target: todayEntry ? (todayEntry.taa_invitations_daily_target || 0) : 0,
+        tgs_registrations_daily_target: todayEntry ? (todayEntry.tgs_registrations_daily_target || 0) : 0,
       };
 
-      // Today Answers (Antworten aus neuestem Eintag)
+      // Today Answers (NUR aus todayEntry, nicht latestEntry)
       const todayAnswers = {
-        help_needed: latestEntry?.help_needed || '',
-        training_focus: latestEntry?.training_focus || '',
-        improvement_today: latestEntry?.improvement_today || '',
-        weekday_answers: latestEntry?.weekday_answers || {},
+        help_needed: todayEntry?.help_needed || '',
+        training_focus: todayEntry?.training_focus || '',
+        improvement_today: todayEntry?.improvement_today || '',
+        weekday_answers: todayEntry?.weekday_answers || {},
         // Spezifische Antworten auf Fragen basierend auf Index
-        question_0: latestEntry?.weekday_answers?.[0] || '',
-        question_1: latestEntry?.weekday_answers?.[1] || '',
-        question_2: latestEntry?.weekday_answers?.[2] || '',
-        question_3: latestEntry?.weekday_answers?.[3] || '',
+        question_0: todayEntry?.weekday_answers?.[0] || '',
+        question_1: todayEntry?.weekday_answers?.[1] || '',
+        question_2: todayEntry?.weekday_answers?.[2] || '',
+        question_3: todayEntry?.weekday_answers?.[3] || '',
       };
 
-      // Today Todos (heutige Todos)
-      const todayTodos = Array.isArray(latestEntry?.today_todos) 
-        ? latestEntry.today_todos.filter(Boolean)
+      // Today Todos (NUR aus todayEntry, nicht latestEntry)
+      const todayTodos = Array.isArray(todayEntry?.today_todos) 
+        ? todayEntry.today_todos.filter(Boolean)
         : [];
+
+      // Today Actuals (Heute's Ist-Zahlen NUR aus todayEntry)
+      const todayActuals = {
+        fa_actual: todayEntry ? (todayEntry.fa_count || 0) : 0,
+        eh_actual: todayEntry ? (todayEntry.eh_count || 0) : 0,
+        new_appointments_actual: todayEntry ? (todayEntry.new_appointments || 0) : 0,
+        recommendations_actual: todayEntry ? (todayEntry.recommendations || 0) : 0,
+        tiv_invitations_actual: todayEntry ? (todayEntry.tiv_invitations || 0) : 0,
+        bav_checks_actual: todayEntry ? (todayEntry.bav_checks || 0) : 0,
+        taa_invitations_actual: todayEntry ? (todayEntry.taa_invitations || 0) : 0,
+        tgs_registrations_actual: todayEntry ? (todayEntry.tgs_registrations || 0) : 0,
+      };
 
       // Debug: Log weekday_answers for troubleshooting
 
@@ -711,12 +712,6 @@ export async function GET(request: NextRequest) {
         monthlyProgress.tgs_registrations_actual += entry.tgs_registrations || 0;
       });
 
-      // Debug: Log final data before pushing
-      if (teamUser.name === 'Daniel Kuhlen' || teamUser.name === 'Marcel Jansen') {
-      }
-      if (teamUser.name === 'Robin' || teamUser.name === 'Robin Ache' || teamUser.name?.includes('Robin')) {
-      }
-
       teamMembers.push({
         id: teamUser.id,
         name: teamUser.name,
@@ -728,6 +723,7 @@ export async function GET(request: NextRequest) {
         yesterdayResults,
         yesterdayGoals,
         todayGoals,
+        todayActuals, // Heute's Ist-Zahlen hinzugefügt
         todayAnswers,
         weekdayAnswers: todayAnswers.weekday_answers, // Frontend erwartet weekdayAnswers
         todayTodos,
@@ -795,7 +791,7 @@ export async function GET(request: NextRequest) {
       tgs_registrations_actual: 0,
     };
 
-    // Team Weekly Progress berechnen
+    // Team Weekly Progress berechnen - nur teamMembers (da die die richtige Datenstruktur haben)
     teamMembers.forEach(member => {
       teamWeeklyProgress.fa_weekly_target += member.weeklyProgress.fa_weekly_target;
       teamWeeklyProgress.fa_actual += member.weeklyProgress.fa_actual;
@@ -827,6 +823,7 @@ export async function GET(request: NextRequest) {
       tgs_registrations_daily_target: 0,
     };
 
+    // HEUTE's Team Goals: nur teamMembers (da die die richtige Datenstruktur haben)
     teamMembers.forEach(member => {
       teamTodayGoals.fa_daily_target += member.todayGoals.fa_daily_target;
       teamTodayGoals.eh_daily_target += member.todayGoals.eh_daily_target;
@@ -970,22 +967,36 @@ export async function GET(request: NextRequest) {
         teamWeeklyProgress: teamWeeklyProgress,
         teamMonthlyProgress: teamMonthlyProgress,
         
-        // Available Team Views (für Tab-Navigation) - nur Teams mit Untergebenen
-        availableTeamViews: [
-          // Nur Teams anzeigen, die tatsächlich Untergebene haben
-          ...Array.from(new Set([
-            // Eigenes Team (nur wenn Untergebene vorhanden)
-            ...(directTeamUsers.length > 0 || subteams.length > 0 ? [user.team_name] : []),
-            // Teams der direkten Untergebenen (nur wenn sie Team-Leader sind)
-            ...directTeamUsers.filter(u => u.is_team_leader).map(u => u.team_name).filter(Boolean),
-            // Teams der Subteams
-            ...subteams.map(subteam => subteam.teamLeader.team_name).filter(Boolean)
-          ])).map(teamName => ({
-            id: teamName,
-            name: teamName,
-            role: 'team'
-          }))
-        ],
+        // Available Team Views (für Tab-Navigation) - basierend auf User-Rolle
+        availableTeamViews: (() => {
+          if (user.role === 'admin') {
+            // Admins sehen alle Teams
+            return [
+              // Alle Teams zeigen die User haben (Team-Leader oder User)
+              ...Array.from(new Set([
+                // Eigenes Team immer anzeigen
+                user.team_name,
+                // Teams aller teamMembers
+                ...teamMembers.map(u => u.team_name).filter(Boolean),
+                // Teams der direkten Untergebenen
+                ...directTeamUsers.filter(u => u.is_team_leader).map(u => u.team_name).filter(Boolean),
+                // Teams der Subteams
+                ...subteams.map(subteam => subteam.teamLeader.team_name).filter(Boolean)
+              ])).filter(Boolean).map(teamName => ({
+                id: teamName,
+                name: teamName,
+                role: 'team'
+              }))
+            ];
+          } else {
+            // Nicht-Admins sehen nur ihr eigenes Team
+            return [{
+              id: user.team_name,
+              name: user.team_name,
+              role: 'team'
+            }].filter(team => team.name);
+          }
+        })(),
         
       }
     });
