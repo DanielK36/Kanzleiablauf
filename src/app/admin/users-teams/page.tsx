@@ -45,6 +45,34 @@ export default function AdminUsersTeamsPage() {
   const { user, isLoaded } = useUser();
   const router = useRouter();
   const [activeTab, setActiveTab] = useState('users');
+  
+  // Check if user is admin
+  useEffect(() => {
+    if (isLoaded && user) {
+      // Check user role from database
+      checkUserRole();
+    } else if (isLoaded && !user) {
+      router.push('/simple-dashboard');
+    }
+  }, [isLoaded, user, router]);
+
+  const checkUserRole = async () => {
+    try {
+      const response = await fetch('/api/admin/users');
+      if (response.ok) {
+        const data = await response.json();
+        // If we can access admin API, user is admin
+        loadUsers();
+        loadTeams();
+      } else {
+        // User is not admin, redirect
+        router.push('/simple-dashboard');
+      }
+    } catch (error) {
+      console.error('Error checking user role:', error);
+      router.push('/simple-dashboard');
+    }
+  };
 
   // Users State
   const [users, setUsers] = useState<User[]>([]);
@@ -77,35 +105,13 @@ export default function AdminUsersTeamsPage() {
   const [teamFormData, setTeamFormData] = useState({
     name: '',
     parent_team_id: '',
-    description: ''
+    description: '',
+    team_level: 1
   });
 
-  useEffect(() => {
-    if (isLoaded) {
-      checkAdminAccess();
-      loadUsers();
-      loadTeams();
-    }
-  }, [isLoaded]);
+  // Remove old useEffect - now handled in checkUserRole
 
-  const checkAdminAccess = async () => {
-    if (!user) return;
-    
-    try {
-      const response = await fetch('/api/admin/users');
-      if (response.status === 403) {
-        router.push('/simple-dashboard');
-        return;
-      }
-      if (!response.ok) {
-        router.push('/simple-dashboard');
-        return;
-      }
-    } catch (error) {
-      console.error('Admin access check failed:', error);
-      router.push('/simple-dashboard');
-    }
-  };
+  // Old checkAdminAccess function removed - now handled in checkUserRole
 
   // Users Functions
   const loadUsers = async () => {
@@ -232,7 +238,8 @@ export default function AdminUsersTeamsPage() {
         resetTeamForm();
       } else {
         const error = await response.json();
-        alert(`Fehler beim ${editingTeam ? 'Aktualisieren' : 'Erstellen'} des Teams: ` + error.error);
+        console.error('Team API Error:', error);
+        alert(`Fehler beim ${editingTeam ? 'Aktualisieren' : 'Erstellen'} des Teams: ${error.details || error.error}`);
       }
     } catch (error) {
       console.error(`Error ${editingTeam ? 'updating' : 'creating'} team:`, error);
@@ -244,7 +251,8 @@ export default function AdminUsersTeamsPage() {
     setTeamFormData({
       name: '',
       parent_team_id: '',
-      description: ''
+      description: '',
+      team_level: 1
     });
   };
 
@@ -253,7 +261,8 @@ export default function AdminUsersTeamsPage() {
     setTeamFormData({
       name: team.name,
       parent_team_id: team.parent_team_id || '',
-      description: team.description
+      description: team.description,
+      team_level: team.team_level || 1
     });
     setShowEditTeamModal(true);
   };
@@ -304,33 +313,33 @@ export default function AdminUsersTeamsPage() {
 
           {/* Users Tab */}
           <TabsContent value="users" className="space-y-6">
-            <div className="flex justify-between items-center">
+            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center space-y-4 sm:space-y-0">
               <h2 className="text-xl font-semibold">Benutzer-Verwaltung</h2>
               <Button onClick={() => setShowCreateUserModal(true)}>
                 + Neuer Benutzer
               </Button>
             </div>
 
-            <div className="bg-white rounded-lg shadow overflow-hidden">
+            <div className="bg-white rounded-lg shadow overflow-hidden overflow-x-auto">
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Name
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      E-Mail
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Team
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Rolle
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Vorgesetzter
+                    </th>
+                    <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Status
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Aktionen
                     </th>
                   </tr>
@@ -338,27 +347,36 @@ export default function AdminUsersTeamsPage() {
                 <tbody className="bg-white divide-y divide-gray-200">
                   {users.map((user) => (
                     <tr key={user.id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 whitespace-nowrap">
+                      <td className="px-3 py-4 whitespace-nowrap">
                         <div className="text-sm font-medium text-gray-900">{user.name}</div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-900">{user.email}</div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
+                      <td className="px-3 py-4 whitespace-nowrap">
                         <div className="text-sm text-gray-900">{user.team_name || 'Kein Team'}</div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
+                      <td className="px-3 py-4 whitespace-nowrap">
                         <div className="text-sm text-gray-900">{user.role}</div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
+                      <td className="px-3 py-4 whitespace-nowrap">
+                        <div className="text-sm text-gray-900">
+                          {user.parent_leader_id ? (
+                            <div className="flex items-center gap-2">
+                              <span>{users.find(u => u.id === user.parent_leader_id)?.name || 'Unbekannt'}</span>
+                              {users.find(u => u.id === user.parent_leader_id)?.is_team_leader && (
+                                <span className="text-yellow-500">👑</span>
+                              )}
+                            </div>
+                          ) : 'Kein Vorgesetzter'}
+                        </div>
+                      </td>
+                      <td className="px-3 py-4 whitespace-nowrap">
                         {user.is_team_leader ? (
                           <Badge variant="default">Team-Leader</Badge>
                         ) : (
                           <Badge variant="secondary">Mitglied</Badge>
                         )}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                        <div className="flex space-x-2">
+                      <td className="px-3 py-4 whitespace-nowrap text-sm font-medium">
+                        <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2">
                           <Button 
                             size="sm" 
                             variant="outline"
@@ -397,33 +415,33 @@ export default function AdminUsersTeamsPage() {
 
           {/* Teams Tab */}
           <TabsContent value="teams" className="space-y-6">
-            <div className="flex justify-between items-center">
+            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center space-y-4 sm:space-y-0">
               <h2 className="text-xl font-semibold">Team-Verwaltung</h2>
               <Button onClick={() => setShowCreateTeamModal(true)}>
                 + Neues Team
               </Button>
             </div>
 
-            <div className="bg-white rounded-lg shadow overflow-hidden">
+            <div className="bg-white rounded-lg shadow overflow-hidden overflow-x-auto">
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Name
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Beschreibung
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Level
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Parent Team
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Team-Leader
+                    </th>
+                    <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Erstellt
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Aktionen
                     </th>
                   </tr>
@@ -431,29 +449,41 @@ export default function AdminUsersTeamsPage() {
                 <tbody className="bg-white divide-y divide-gray-200">
                   {teams.map((team) => (
                     <tr key={team.id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 whitespace-nowrap">
+                      <td className="px-3 py-4 whitespace-nowrap">
                         <div className="text-sm font-medium text-gray-900">{team.name}</div>
                       </td>
-                      <td className="px-6 py-4">
-                        <div className="text-sm text-gray-900 max-w-xs truncate">
-                          {team.description || 'Keine Beschreibung'}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
+                      <td className="px-3 py-4 whitespace-nowrap">
                         <Badge variant="outline">Level {team.team_level}</Badge>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
+                      <td className="px-3 py-4 whitespace-nowrap">
                         <div className="text-sm text-gray-900">
-                          {team.parent_team_id || 'Kein Parent'}
+                          {team.parent_team_id ? teams.find(t => t.id === team.parent_team_id)?.name || 'Unbekannt' : 'Kein Parent'}
                         </div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
+                      <td className="px-3 py-4 whitespace-nowrap">
+                        <div className="text-sm text-gray-900">
+                          {(() => {
+                            // Finde den Team Leader für dieses Team
+                            const teamLeader = users.find(u => u.team_name === team.name && u.is_team_leader);
+                            if (teamLeader) {
+                              return (
+                                <div className="flex items-center gap-2">
+                                  <span>{teamLeader.name}</span>
+                                  <span className="text-yellow-500">👑</span>
+                                </div>
+                              );
+                            }
+                            return 'Kein Leader';
+                          })()}
+                        </div>
+                      </td>
+                      <td className="px-3 py-4 whitespace-nowrap">
                         <div className="text-sm text-gray-900">
                           {new Date(team.created_at).toLocaleDateString('de-DE')}
                         </div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                        <div className="flex space-x-2">
+                      <td className="px-3 py-4 whitespace-nowrap text-sm font-medium">
+                        <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2">
                           <Button 
                             size="sm" 
                             variant="outline"
@@ -494,11 +524,11 @@ export default function AdminUsersTeamsPage() {
         {/* User Create Modal */}
         {showCreateUserModal && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <Card className="max-w-md w-full mx-4">
-              <CardHeader>
+            <Card className="max-w-md w-full mx-4 bg-white shadow-lg">
+              <CardHeader className="bg-gray-50 border-b">
                 <CardTitle>👤 Neuen Benutzer erstellen</CardTitle>
               </CardHeader>
-              <CardContent>
+              <CardContent className="bg-white">
                 <form onSubmit={handleUserSubmit} className="space-y-4">
                   <div>
                     <Label htmlFor="name">Name</Label>
@@ -545,6 +575,46 @@ export default function AdminUsersTeamsPage() {
                     </Select>
                   </div>
 
+                  <div>
+                    <Label htmlFor="parent_leader">Vorgesetzter (Parent Leader)</Label>
+                    <Select 
+                      value={userFormData.parent_leader_id || 'none'} 
+                      onValueChange={(value) => setUserFormData(prev => ({ ...prev, parent_leader_id: value === 'none' ? '' : value }))}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Vorgesetzten wählen..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">Kein Vorgesetzter</SelectItem>
+                        {teams.map(team => {
+                          const teamLeaders = users.filter(u => u.team_name === team.name && u.is_team_leader);
+                          return teamLeaders.map(leader => (
+                            <SelectItem key={leader.id} value={leader.id}>
+                              {leader.name} ({team.name}) {leader.is_team_leader ? '👑' : ''}
+                            </SelectItem>
+                          ));
+                        })}
+                      </SelectContent>
+                    </Select>
+                    <div className="text-sm text-gray-600 mt-1">
+                      💡 Definiert die Hierarchie - wer ist der direkte Vorgesetzte
+                    </div>
+                  </div>
+
+                  <div className="flex items-center space-x-2">
+                    <input
+                      type="checkbox"
+                      id="is_team_leader"
+                      checked={userFormData.is_team_leader}
+                      onChange={(e) => setUserFormData(prev => ({ ...prev, is_team_leader: e.target.checked }))}
+                      className="rounded"
+                    />
+                    <Label htmlFor="is_team_leader">Team-Leader</Label>
+                    <div className="text-sm text-gray-600 ml-2">
+                      💡 Wird automatisch als Team-Leader für das Team gesetzt
+                    </div>
+                  </div>
+
                   <div className="flex space-x-3 pt-4">
                     <Button type="submit" className="flex-1">
                       Benutzer erstellen
@@ -570,11 +640,11 @@ export default function AdminUsersTeamsPage() {
         {/* User Edit Modal */}
         {showEditUserModal && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <Card className="max-w-md w-full mx-4">
-              <CardHeader>
+            <Card className="max-w-md w-full mx-4 bg-white shadow-lg">
+              <CardHeader className="bg-gray-50 border-b">
                 <CardTitle>👤 Benutzer bearbeiten</CardTitle>
               </CardHeader>
-              <CardContent>
+              <CardContent className="bg-white">
                 <form onSubmit={handleUserSubmit} className="space-y-4">
                   <div>
                     <Label htmlFor="edit-name">Name</Label>
@@ -621,6 +691,40 @@ export default function AdminUsersTeamsPage() {
                     </Select>
                   </div>
 
+                  <div>
+                    <Label htmlFor="edit-parent_leader">Vorgesetzter (Parent Leader)</Label>
+                    <Select 
+                      value={userFormData.parent_leader_id || 'none'} 
+                      onValueChange={(value) => setUserFormData(prev => ({ ...prev, parent_leader_id: value === 'none' ? '' : value }))}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Vorgesetzten wählen..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">Kein Vorgesetzter</SelectItem>
+                        {teams.map(team => {
+                          const teamLeaders = users.filter(u => u.team_name === team.name && u.is_team_leader);
+                          return teamLeaders.map(leader => (
+                            <SelectItem key={leader.id} value={leader.id}>
+                              {leader.name} ({team.name})
+                            </SelectItem>
+                          ));
+                        })}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="flex items-center space-x-2">
+                    <input
+                      type="checkbox"
+                      id="edit-is_team_leader"
+                      checked={userFormData.is_team_leader}
+                      onChange={(e) => setUserFormData(prev => ({ ...prev, is_team_leader: e.target.checked }))}
+                      className="rounded"
+                    />
+                    <Label htmlFor="edit-is_team_leader">Team-Leader</Label>
+                  </div>
+
                   <div className="flex space-x-3 pt-4">
                     <Button type="submit" className="flex-1">
                       Benutzer aktualisieren
@@ -647,11 +751,11 @@ export default function AdminUsersTeamsPage() {
         {/* User Delete Confirmation Modal */}
         {showDeleteUserConfirm && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <Card className="max-w-md w-full mx-4">
-              <CardHeader>
+            <Card className="max-w-md w-full mx-4 bg-white shadow-lg">
+              <CardHeader className="bg-gray-50 border-b">
                 <CardTitle>🗑️ Benutzer löschen</CardTitle>
               </CardHeader>
-              <CardContent>
+              <CardContent className="bg-white">
                 <p className="text-gray-700 mb-4">
                   Sind Sie sicher, dass Sie den Benutzer "{showDeleteUserConfirm.name}" löschen möchten?
                 </p>
@@ -682,11 +786,11 @@ export default function AdminUsersTeamsPage() {
         {/* Team Create Modal */}
         {showCreateTeamModal && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <Card className="max-w-md w-full mx-4">
-              <CardHeader>
+            <Card className="max-w-md w-full mx-4 bg-white shadow-lg">
+              <CardHeader className="bg-gray-50 border-b">
                 <CardTitle>👥 Neues Team erstellen</CardTitle>
               </CardHeader>
-              <CardContent>
+              <CardContent className="bg-white">
                 <form onSubmit={handleTeamSubmit} className="space-y-4">
                   <div>
                     <Label htmlFor="team-name">Team-Name</Label>
@@ -705,6 +809,39 @@ export default function AdminUsersTeamsPage() {
                       value={teamFormData.description}
                       onChange={(e) => setTeamFormData(prev => ({ ...prev, description: e.target.value }))}
                     />
+                  </div>
+
+                  <div className="grid md:grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="team-level">Team-Level</Label>
+                      <Input
+                        id="team-level"
+                        type="number"
+                        min="1"
+                        max="10"
+                        value={teamFormData.team_level}
+                        onChange={(e) => setTeamFormData(prev => ({ ...prev, team_level: parseInt(e.target.value) || 1 }))}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="parent-team">Parent Team</Label>
+                      <Select 
+                        value={teamFormData.parent_team_id || 'none'} 
+                        onValueChange={(value) => setTeamFormData(prev => ({ ...prev, parent_team_id: value === 'none' ? '' : value }))}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Parent Team wählen..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">Kein Parent Team</SelectItem>
+                          {teams.filter(t => t.id !== editingTeam?.id).map(parentTeam => (
+                            <SelectItem key={parentTeam.id} value={parentTeam.id}>
+                              {parentTeam.name} (Level {parentTeam.team_level})
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
                   </div>
 
                   <div className="flex space-x-3 pt-4">
@@ -732,11 +869,11 @@ export default function AdminUsersTeamsPage() {
         {/* Team Edit Modal */}
         {showEditTeamModal && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <Card className="max-w-md w-full mx-4">
-              <CardHeader>
+            <Card className="max-w-md w-full mx-4 bg-white shadow-lg">
+              <CardHeader className="bg-gray-50 border-b">
                 <CardTitle>👥 Team bearbeiten</CardTitle>
               </CardHeader>
-              <CardContent>
+              <CardContent className="bg-white">
                 <form onSubmit={handleTeamSubmit} className="space-y-4">
                   <div>
                     <Label htmlFor="edit-team-name">Team-Name</Label>
@@ -755,6 +892,39 @@ export default function AdminUsersTeamsPage() {
                       value={teamFormData.description}
                       onChange={(e) => setTeamFormData(prev => ({ ...prev, description: e.target.value }))}
                     />
+                  </div>
+
+                  <div className="grid md:grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="edit-team-level">Team-Level</Label>
+                      <Input
+                        id="edit-team-level"
+                        type="number"
+                        min="1"
+                        max="10"
+                        value={teamFormData.team_level}
+                        onChange={(e) => setTeamFormData(prev => ({ ...prev, team_level: parseInt(e.target.value) || 1 }))}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="edit-parent-team">Parent Team</Label>
+                      <Select 
+                        value={teamFormData.parent_team_id || 'none'} 
+                        onValueChange={(value) => setTeamFormData(prev => ({ ...prev, parent_team_id: value === 'none' ? '' : value }))}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Parent Team wählen..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">Kein Parent Team</SelectItem>
+                          {teams.filter(t => t.id !== editingTeam?.id).map(parentTeam => (
+                            <SelectItem key={parentTeam.id} value={parentTeam.id}>
+                              {parentTeam.name} (Level {parentTeam.team_level})
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
                   </div>
 
                   <div className="flex space-x-3 pt-4">
@@ -783,11 +953,11 @@ export default function AdminUsersTeamsPage() {
         {/* Team Delete Confirmation Modal */}
         {showDeleteTeamConfirm && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <Card className="max-w-md w-full mx-4">
-              <CardHeader>
+            <Card className="max-w-md w-full mx-4 bg-white shadow-lg">
+              <CardHeader className="bg-gray-50 border-b">
                 <CardTitle>🗑️ Team löschen</CardTitle>
               </CardHeader>
-              <CardContent>
+              <CardContent className="bg-white">
                 <p className="text-gray-700 mb-4">
                   Sind Sie sicher, dass Sie das Team "{showDeleteTeamConfirm.name}" löschen möchten?
                 </p>

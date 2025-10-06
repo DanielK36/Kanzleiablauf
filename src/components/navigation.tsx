@@ -99,19 +99,18 @@ export default function Navigation() {
                 Team-Übersicht
               </Link>
               
+              
               {userData?.role === 'admin' && (
-                <>
-                  <Link 
-                    href="/admin/dashboard" 
-                    className={`text-sm font-medium transition-colors ${
-                      isActive('/admin/dashboard') || pathname.startsWith('/admin/')
-                        ? 'text-blue-600 dark:text-blue-400 border-b-2 border-blue-600 pb-1' 
-                        : 'text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white'
-                    }`}
-                  >
-                    Admin
-                  </Link>
-                </>
+                <Link 
+                  href="/admin/dashboard" 
+                  className={`text-sm font-medium transition-colors ${
+                    isActive('/admin/dashboard') || pathname.startsWith('/admin/')
+                      ? 'text-blue-600 dark:text-blue-400 border-b-2 border-blue-600 pb-1' 
+                      : 'text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white'
+                  }`}
+                >
+                  🌌 Admin
+                </Link>
               )}
             </div>
           </div>
@@ -167,6 +166,7 @@ export default function Navigation() {
               Team-Übersicht
             </Link>
             
+            
             {userData?.role === 'admin' && (
               <Link 
                 href="/admin/dashboard" 
@@ -177,7 +177,7 @@ export default function Navigation() {
                 }`}
                 onClick={() => setMobileMenuOpen(false)}
               >
-                Admin
+                🌌 Admin
               </Link>
             )}
             

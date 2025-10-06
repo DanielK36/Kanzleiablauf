@@ -64,23 +64,26 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { name, parent_team_id, description } = body;
+    const { name, parent_team_id, description, team_level } = body;
+    
+    // Clean up empty strings to null
+    const cleanParentTeamId = parent_team_id === '' ? null : parent_team_id;
 
     if (!name) {
       return NextResponse.json({ error: 'Team name is required' }, { status: 400 });
     }
 
     // Determine team level
-    let team_level = 1;
-    if (parent_team_id) {
+    let finalTeamLevel = team_level || 1;
+    if (cleanParentTeamId && !team_level) {
       const { data: parentTeam } = await supabase
         .from('teams')
         .select('team_level')
-        .eq('id', parent_team_id)
+        .eq('id', cleanParentTeamId)
         .single();
       
       if (parentTeam) {
-        team_level = parentTeam.team_level + 1;
+        finalTeamLevel = parentTeam.team_level + 1;
       }
     }
 
@@ -89,8 +92,8 @@ export async function POST(request: NextRequest) {
       .from('teams')
       .insert({
         name,
-        parent_team_id,
-        team_level,
+        parent_team_id: cleanParentTeamId,
+        team_level: finalTeamLevel,
         description
       })
       .select()
@@ -128,23 +131,26 @@ export async function PUT(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { id, name, parent_team_id, description } = body;
+    const { id, name, parent_team_id, description, team_level } = body;
+    
+    // Clean up empty strings to null
+    const cleanParentTeamId = parent_team_id === '' ? null : parent_team_id;
 
     if (!id || !name) {
       return NextResponse.json({ error: 'Team ID and name are required' }, { status: 400 });
     }
 
     // Determine team level
-    let team_level = 1;
-    if (parent_team_id) {
+    let finalTeamLevel = team_level || 1;
+    if (cleanParentTeamId && !team_level) {
       const { data: parentTeam } = await supabase
         .from('teams')
         .select('team_level')
-        .eq('id', parent_team_id)
+        .eq('id', cleanParentTeamId)
         .single();
       
       if (parentTeam) {
-        team_level = parentTeam.team_level + 1;
+        finalTeamLevel = parentTeam.team_level + 1;
       }
     }
 
@@ -153,8 +159,8 @@ export async function PUT(request: NextRequest) {
       .from('teams')
       .update({
         name,
-        parent_team_id,
-        team_level,
+        parent_team_id: cleanParentTeamId,
+        team_level: finalTeamLevel,
         description,
         updated_at: new Date().toISOString()
       })
@@ -164,7 +170,11 @@ export async function PUT(request: NextRequest) {
 
     if (error) {
       console.error('Error updating team:', error);
-      return NextResponse.json({ error: 'Database error' }, { status: 500 });
+      return NextResponse.json({ 
+        error: 'Database error', 
+        details: error.message,
+        code: error.code 
+      }, { status: 500 });
     }
 
     return NextResponse.json({ success: true, data: updatedTeam });
@@ -193,10 +203,10 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: 'Admin access required' }, { status: 403 });
     }
 
-    const body = await request.json();
-    const { id } = body;
-
-    if (!id) {
+    const { searchParams } = new URL(request.url);
+    const teamIdToDelete = searchParams.get('id');
+    
+    if (!teamIdToDelete) {
       return NextResponse.json({ error: 'Team ID is required' }, { status: 400 });
     }
 
@@ -204,7 +214,7 @@ export async function DELETE(request: NextRequest) {
     const { error } = await supabase
       .from('teams')
       .delete()
-      .eq('id', id);
+      .eq('id', teamIdToDelete);
 
     if (error) {
       console.error('Error deleting team:', error);

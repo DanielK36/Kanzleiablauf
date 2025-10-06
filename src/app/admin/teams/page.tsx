@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 interface Team {
@@ -14,6 +15,8 @@ interface Team {
   name: string;
   description?: string;
   team_level: number;
+  parent_team_id?: string;
+  team_leader_id?: string;
   created_at: string;
   member_count?: number;
 }
@@ -258,6 +261,15 @@ export default function TeamManagementPage() {
                           </div>
                         )}
                         
+                        {team.parent_team_id && (
+                          <div className="flex justify-between items-center">
+                            <span className="text-sm font-medium">Parent Team:</span>
+                            <Badge variant="secondary">
+                              {teams.find(t => t.id === team.parent_team_id)?.name || 'Unbekannt'}
+                            </Badge>
+                          </div>
+                        )}
+                        
                         <div className="text-xs text-gray-500">
                           Erstellt: {new Date(team.created_at).toLocaleDateString('de-DE')}
                         </div>
@@ -295,6 +307,8 @@ export default function TeamManagementPage() {
                 <CardContent>
                   <TeamForm
                     team={editingTeam}
+                    teams={teams}
+                    users={users}
                     onSave={handleSaveTeam}
                     onCancel={() => {
                       setEditingTeam(null);
@@ -331,15 +345,19 @@ export default function TeamManagementPage() {
 
 interface TeamFormProps {
   team: Team | null;
+  teams: Team[];
+  users: User[];
   onSave: (teamData: Partial<Team>) => void;
   onCancel: () => void;
 }
 
-function TeamForm({ team, onSave, onCancel }: TeamFormProps) {
+function TeamForm({ team, teams, users, onSave, onCancel }: TeamFormProps) {
   const [formData, setFormData] = useState({
     name: team?.name || '',
     description: team?.description || '',
-    team_level: team?.team_level || 1
+    team_level: team?.team_level || 1,
+    parent_team_id: team?.parent_team_id || '',
+    team_leader_id: team?.team_leader_id || ''
   });
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -372,20 +390,61 @@ function TeamForm({ team, onSave, onCancel }: TeamFormProps) {
         />
       </div>
 
-      <div>
-        <Label htmlFor="team_level">Team-Level *</Label>
-        <Input
-          id="team_level"
-          type="number"
-          min="1"
-          max="10"
-          value={formData.team_level}
-          onChange={(e) => setFormData(prev => ({ ...prev, team_level: parseInt(e.target.value) || 1 }))}
-          required
-        />
-        <div className="text-sm text-gray-600 mt-1">
-          Level 1 = Basis-Team, Level 2+ = Führungsteams
+      <div className="grid md:grid-cols-2 gap-4">
+        <div>
+          <Label htmlFor="team_level">Team-Level *</Label>
+          <Input
+            id="team_level"
+            type="number"
+            min="1"
+            max="10"
+            value={formData.team_level}
+            onChange={(e) => setFormData(prev => ({ ...prev, team_level: parseInt(e.target.value) || 1 }))}
+            required
+          />
+          <div className="text-sm text-gray-600 mt-1">
+            Level 1 = Basis-Team, Level 2+ = Führungsteams
+          </div>
         </div>
+        <div>
+          <Label htmlFor="parent_team">Parent Team</Label>
+          <Select 
+            value={formData.parent_team_id} 
+            onValueChange={(value) => setFormData(prev => ({ ...prev, parent_team_id: value }))}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Parent Team wählen..." />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="">Kein Parent Team</SelectItem>
+              {teams.filter(t => t.id !== team?.id).map(parentTeam => (
+                <SelectItem key={parentTeam.id} value={parentTeam.id}>
+                  {parentTeam.name} (Level {parentTeam.team_level})
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
+      <div>
+        <Label htmlFor="team_leader">Team-Leader</Label>
+        <Select 
+          value={formData.team_leader_id} 
+          onValueChange={(value) => setFormData(prev => ({ ...prev, team_leader_id: value }))}
+        >
+          <SelectTrigger>
+            <SelectValue placeholder="Team-Leader wählen..." />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="">Kein Team-Leader</SelectItem>
+            {users.map(user => (
+              <SelectItem key={user.id} value={user.id}>
+                {user.name} ({user.team_name})
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
       <div className="flex gap-2">

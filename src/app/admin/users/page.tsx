@@ -333,6 +333,7 @@ export default function UserManagementPage() {
                   <UserForm
                     user={editingUser}
                     teams={teams}
+                    users={users}
                     onSave={handleSaveUser}
                     onCancel={() => {
                       setEditingUser(null);
@@ -370,11 +371,12 @@ export default function UserManagementPage() {
 interface UserFormProps {
   user: User | null;
   teams: Team[];
+  users: User[];
   onSave: (userData: Partial<User>) => void;
   onCancel: () => void;
 }
 
-function UserForm({ user, teams, onSave, onCancel }: UserFormProps) {
+function UserForm({ user, teams, users, onSave, onCancel }: UserFormProps) {
   const [formData, setFormData] = useState({
     name: user?.name || '',
     email: user?.email || '',
@@ -449,15 +451,39 @@ function UserForm({ user, teams, onSave, onCancel }: UserFormProps) {
         </div>
       </div>
 
-      <div className="flex items-center space-x-2">
-        <input
-          type="checkbox"
-          id="is_team_leader"
-          checked={formData.is_team_leader}
-          onChange={(e) => setFormData(prev => ({ ...prev, is_team_leader: e.target.checked }))}
-          className="rounded"
-        />
-        <Label htmlFor="is_team_leader">Team-Leader</Label>
+      <div className="grid md:grid-cols-2 gap-4">
+        <div>
+          <Label htmlFor="parent_leader">Vorgesetzter (Parent Leader)</Label>
+          <Select 
+            value={formData.parent_leader_id} 
+            onValueChange={(value) => setFormData(prev => ({ ...prev, parent_leader_id: value }))}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Vorgesetzten wählen..." />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="">Kein Vorgesetzter</SelectItem>
+              {teams.map(team => {
+                const teamLeaders = users.filter(u => u.team_name === team.name && u.is_team_leader);
+                return teamLeaders.map(leader => (
+                  <SelectItem key={leader.id} value={leader.id}>
+                    {leader.name} ({team.name})
+                  </SelectItem>
+                ));
+              })}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="flex items-center space-x-2">
+          <input
+            type="checkbox"
+            id="is_team_leader"
+            checked={formData.is_team_leader}
+            onChange={(e) => setFormData(prev => ({ ...prev, is_team_leader: e.target.checked }))}
+            className="rounded"
+          />
+          <Label htmlFor="is_team_leader">Team-Leader</Label>
+        </div>
       </div>
 
       <div className="flex gap-2">

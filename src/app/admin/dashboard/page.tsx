@@ -132,27 +132,11 @@ export default function AdminDashboard() {
       priority: 'high'
     },
     {
-      title: 'Event-Verwaltung',
-      description: '📅 Veranstaltungen verwalten',
-      href: '/admin/events',
-      icon: '📅',
+      title: 'Event-Management',
+      description: '🎯 Events, Referenten und Topics verwalten',
+      href: '/admin/event-management',
+      icon: '🎯',
       color: 'bg-gradient-to-r from-orange-600 to-yellow-600',
-      priority: 'high'
-    },
-    {
-      title: 'Referenten-Verwaltung',
-      description: '🎤 Referenten autorisieren',
-      href: '/admin/speakers',
-      icon: '🎤',
-      color: 'bg-gradient-to-r from-purple-600 to-pink-600',
-      priority: 'high'
-    },
-    {
-      title: 'Event-Topics',
-      description: '📝 Event-Themen verwalten',
-      href: '/admin/event-topics',
-      icon: '📝',
-      color: 'bg-gradient-to-r from-yellow-600 to-orange-600',
       priority: 'high'
     },
     {

@@ -19,6 +19,27 @@ interface ConversationPartner {
   highlight_yesterday?: string;
   help_needed?: string;
   improvement_today?: string;
+  quotas: {
+    appointments_per_fa: number;
+    recommendations_per_fa: number;
+    tiv_per_fa: number;
+    tgs_per_tiv: number;
+    bav_per_fa: number;
+  };
+  teamAverages: {
+    appointments_per_fa: number;
+    recommendations_per_fa: number;
+    tiv_per_fa: number;
+    tgs_per_tiv: number;
+    bav_per_fa: number;
+  };
+  quotaAnalysis: {
+    appointments_per_fa: { status: string; message: string };
+    recommendations_per_fa: { status: string; message: string };
+    tiv_per_fa: { status: string; message: string };
+    tgs_per_tiv: { status: string; message: string };
+    bav_per_fa: { status: string; message: string };
+  };
 }
 
 interface ConversationData {
@@ -26,6 +47,8 @@ interface ConversationData {
   conversation_points: string[];
   action_items: string[];
   next_steps: string[];
+  agenda_snippets: string[];
+  quota_insights: string[];
 }
 
 export default function WeeklyConversationPage() {
@@ -201,19 +224,19 @@ export default function WeeklyConversationPage() {
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
-                    📊 {conversationData.partner.name} - Wöchentliche Performance
+                    📊 {conversationData.partner?.name || 'Unbekannt'} - Wöchentliche Performance
                   </CardTitle>
                   <p className="text-sm text-gray-600">
-                    {conversationData.partner.role} in Team {conversationData.partner.team_name}
+                    {conversationData.partner?.role || 'Unbekannt'} in Team {conversationData.partner?.team_name || 'Unbekannt'}
                   </p>
                 </CardHeader>
                 <CardContent>
                   <div className="grid grid-cols-2 gap-4">
-                    {Object.entries(conversationData.partner.weekly_progress).map(([key, value]) => {
+                    {Object.entries(conversationData.partner?.weekly_progress || {}).map(([key, value]) => {
                       if (key.includes('_target')) return null;
                       
                       const targetKey = `${key}_target`;
-                      const target = conversationData.partner.weekly_progress[targetKey] || 0;
+                      const target = conversationData.partner?.weekly_progress?.[targetKey] || 0;
                       const current = value as number;
                       const progress = target > 0 ? (current / target) * 100 : 0;
                       
@@ -237,6 +260,44 @@ export default function WeeklyConversationPage() {
                 </CardContent>
               </Card>
 
+              {/* Quoten-Analyse */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    📊 Quoten-Analyse
+                  </CardTitle>
+                  <p className="text-sm text-gray-600">Performance-Quoten vs. Team-Durchschnitt</p>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    {Object.entries(conversationData.partner.quotas || {}).map(([quota, value]) => {
+                      const teamAvg = conversationData.partner.teamAverages?.[quota as keyof typeof conversationData.partner.teamAverages] || 0;
+                      const analysis = conversationData.partner.quotaAnalysis?.[quota as keyof typeof conversationData.partner.quotaAnalysis] || { status: 'good', message: 'Keine Daten verfügbar' };
+                      const delta = teamAvg > 0 ? (((value || 0) - teamAvg) / teamAvg) * 100 : 0;
+                      
+                      return (
+                        <div key={quota} className="p-3 bg-gray-50 rounded-lg">
+                          <div className="flex justify-between items-center mb-2">
+                            <div className="text-sm font-medium text-gray-700">
+                              {quota.replace('_', '/').toUpperCase()}
+                            </div>
+                            <Badge variant={analysis.status === 'good' ? 'default' : analysis.status === 'warning' ? 'secondary' : 'destructive'}>
+                              {analysis.status === 'good' ? '🟢' : analysis.status === 'warning' ? '🟡' : '🔴'}
+                            </Badge>
+                          </div>
+                          <div className="text-sm text-gray-600 mb-1">
+                            Eigene Quote: {(value || 0).toFixed(2)} | Team-Durchschnitt: {teamAvg.toFixed(2)}
+                          </div>
+                          <div className="text-xs text-gray-500">
+                            {analysis.message}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </CardContent>
+              </Card>
+
               {/* Gesprächspunkte */}
               <Card>
                 <CardHeader>
@@ -247,9 +308,47 @@ export default function WeeklyConversationPage() {
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-3">
-                    {conversationData.conversation_points.map((point, index) => (
+                    {conversationData.conversation_points?.map((point, index) => (
                       <div key={index} className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
                         <div className="text-sm text-blue-800">{point}</div>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Agenda-Snippets */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    📋 Agenda-Snippets
+                  </CardTitle>
+                  <p className="text-sm text-gray-600">Vorschläge für Gesprächsagenda</p>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    {conversationData.agenda_snippets?.map((snippet, index) => (
+                      <div key={index} className="p-3 bg-green-50 border border-green-200 rounded-lg">
+                        <div className="text-sm text-green-800">{snippet}</div>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Quota-Insights */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    🔍 Quota-Insights
+                  </CardTitle>
+                  <p className="text-sm text-gray-600">Tiefere Analyse der Performance-Quoten</p>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    {conversationData.quota_insights?.map((insight, index) => (
+                      <div key={index} className="p-3 bg-purple-50 border border-purple-200 rounded-lg">
+                        <div className="text-sm text-purple-800">{insight}</div>
                       </div>
                     ))}
                   </div>
@@ -265,7 +364,7 @@ export default function WeeklyConversationPage() {
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-3">
-                    {conversationData.partner.daily_entries.slice(0, 3).map((entry, index) => (
+                    {conversationData.partner?.daily_entries?.slice(0, 3).map((entry, index) => (
                       <div key={index} className="p-3 bg-gray-50 rounded-lg">
                         <div className="text-sm font-medium text-gray-700 mb-1">
                           {new Date(entry.entry_date).toLocaleDateString('de-DE')}

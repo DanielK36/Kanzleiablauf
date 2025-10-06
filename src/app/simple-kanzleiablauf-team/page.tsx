@@ -23,7 +23,9 @@ interface TeamMember {
   firstName?: string;
   role: string;
   teamName?: string;
+  team_name?: string;
   isTrainee?: boolean;
+  isTeamLeader?: boolean;
   yesterdayResults?: {
     fa_actual: number;
     eh_actual: number;
@@ -510,17 +512,49 @@ export default function SimpleKanzleiablaufTeamPage() {
       return teamData;
     }
 
-    // Filter subteams by team name (das sind die Team-Leader mit ihren Teams)
-    const filteredSubteams = teamData.subteams?.filter(subteam => 
-      subteam.teamLeader.team_name === selectedTeam
-    ) || [];
+    // Filter subteams basierend auf ausgewähltem Team
+    let filteredSubteams = [];
     
-    // Filter direct team users by team name (das sind direkte Mitarbeiter ohne Team-Leader)
-    const filteredDirectUsers = teamData.teamMembers?.filter(member => {
-      // teamName kann undefined sein, verwende team_name als Fallback
-      const memberTeamName = member.teamName;
-      return memberTeamName === selectedTeam;
-    }) || [];
+    if (selectedTeam === 'Gamechanger') {
+      // Gamechanger: Alle Subteams anzeigen
+      filteredSubteams = teamData.subteams || [];
+    } else {
+      // Andere Teams: Filtere Subteams basierend auf team_name
+      filteredSubteams = teamData.subteams?.filter(subteam => 
+        subteam.teamLeader.team_name === selectedTeam
+      ) || [];
+      
+    }
+    
+    // Intelligente Filterung basierend auf ausgewähltem Team
+    let filteredDirectUsers = [];
+    
+    if (selectedTeam === 'Gamechanger') {
+      // Gamechanger: Alle Teams anzeigen (Admin-View)
+      filteredDirectUsers = teamData.teamMembers || [];
+    } else {
+      // Andere Teams: Filtere Team-Mitglieder basierend auf team_name + Subteams
+      const selectedTeamMembers = teamData.teamMembers?.filter(member => {
+        const memberTeamName = member.teamName;
+        return memberTeamName === selectedTeam;
+      }) || [];
+      
+      // Finde alle Subteams des ausgewählten Teams
+      const selectedTeamSubteams = teamData.subteams?.filter(subteam => 
+        subteam.teamLeader.team_name === selectedTeam
+      ) || [];
+      
+      // Sammle alle Mitglieder der Subteams
+      const subteamMembers = selectedTeamSubteams.flatMap(subteam => subteam.members || []);
+      
+      // Kombiniere Team-Mitglieder + Subteam-Mitglieder
+      const allMembers = [...selectedTeamMembers, ...subteamMembers];
+      const uniqueMembers = allMembers.filter((member, index, self) => 
+        index === self.findIndex(m => m.id === member.id)
+      );
+      
+      filteredDirectUsers = uniqueMembers;
+    }
     
     // EINFACHE LOGIK: Wenn currentUser das ausgewählte Team hat, verwende ihn direkt
     let currentUserAsLeader: any = null;
@@ -553,13 +587,14 @@ export default function SimpleKanzleiablaufTeamPage() {
     }
     
 
-    // Für Team-spezifische Ansicht: Team-Leader und deren Subteam-Mitglieder als "teamMembers" anzeigen
+    // Strukturierte Anzeige: Team-Leader und deren Subteam-Mitglieder
     const teamLeaderAsMembers = filteredSubteams.flatMap(subteam => {
       const leader = {
         ...subteam.teamLeader,
         teamName: subteam.teamLeader.team_name,
         isTeamLeader: true,
-        subteamMembers: subteam.members
+        subteamMembers: subteam.members,
+        isSubteamLeader: true
       };
       
       // Subteam-Mitglieder auch als separate teamMembers anzeigen (aber nicht den Team-Leader selbst)
@@ -578,21 +613,40 @@ export default function SimpleKanzleiablaufTeamPage() {
       
       return [leader, ...members];
     });
+    
+    
+    // Haupt-Team-Leader hinzufügen (falls vorhanden und noch nicht in Subteams)
+    const mainTeamLeader = filteredDirectUsers.find(member => 
+      (member.teamName || member.team_name) === selectedTeam && 
+      (member as any).isTeamLeader
+    );
+    
+    if (mainTeamLeader && !teamLeaderAsMembers.find(member => member.id === mainTeamLeader.id)) {
+      teamLeaderAsMembers.unshift({
+        ...mainTeamLeader,
+        teamName: selectedTeam,
+        isTeamLeader: true,
+        isMainTeamLeader: true
+      });
+    }
 
     // Direkte Mitarbeiter hinzufügen (Duplikate vermeiden)
     const allTeamMembers = [...teamLeaderAsMembers];
     const processedIds = new Set(teamLeaderAsMembers.map(member => member.id));
     
-    // Nur direkte Mitarbeiter hinzufügen, die noch nicht in teamLeaderAsMembers sind
+    // Alle gefilterten Mitglieder hinzufügen, die noch nicht in teamLeaderAsMembers sind
     for (const directUser of filteredDirectUsers) {
       if (!processedIds.has(directUser.id)) {
         allTeamMembers.push({
           ...directUser,
-          isTeamLeader: false
+          teamName: directUser.teamName || directUser.team_name,
+          isTeamLeader: false,
+          isDirectMember: true
         });
         processedIds.add(directUser.id);
       }
     }
+    
     
     // Current user als Team-Leader hinzufügen (falls zutreffend und noch nicht vorhanden)
     if (currentUserAsLeader) {
@@ -615,26 +669,59 @@ export default function SimpleKanzleiablaufTeamPage() {
     }
 
     
+    // VEREINFACHTE LÖSUNG: Verwende direkt die gefilterten User
+    const finalTeamMembers = filteredDirectUsers.map(member => {
+      // Finde die vollständigen Member-Daten aus teamData.teamMembers
+      const fullMemberData = teamData.teamMembers?.find(tm => tm.id === member.id);
+      
+      // Wenn keine vollständigen Daten gefunden werden, verwende die Basis-Daten
+      if (!fullMemberData) {
+        return {
+          ...member,
+          teamName: member.teamName || member.team_name,
+          isTeamLeader: false,
+          isDirectMember: true,
+          // Füge leere Daten hinzu, damit die UI nicht crasht
+          todayGoals: {},
+          todayActuals: {},
+          yesterdayResults: {},
+          yesterdayGoals: {},
+          todayAnswers: {},
+          todayTodos: [],
+          weeklyProgress: {},
+          monthlyProgress: {}
+        };
+      }
+      
+      return {
+        ...member,
+        ...fullMemberData, // Vollständige Daten inkl. weeklyProgress, monthlyProgress
+        teamName: member.teamName || member.team_name,
+        isTeamLeader: false,
+        isDirectMember: true
+      };
+    });
+    
+    
     // Calculate team-specific goals and progress
-    const filteredTeamTodayGoals = calculateTeamTodayGoals(allTeamMembers);
-    const filteredTeamWeeklyProgress = calculateTeamWeeklyProgress(allTeamMembers);
-    const filteredTeamMonthlyProgress = calculateTeamMonthlyProgress(allTeamMembers);
+    const filteredTeamTodayGoals = calculateTeamTodayGoals(finalTeamMembers);
+    const filteredTeamWeeklyProgress = calculateTeamWeeklyProgress(finalTeamMembers);
+    const filteredTeamMonthlyProgress = calculateTeamMonthlyProgress(finalTeamMembers);
     
     // Calculate team-specific yesterday results
-    const filteredTeamYesterdayResults = calculateTeamYesterdayResults(allTeamMembers);
-    
+    const filteredTeamYesterdayResults = calculateTeamYesterdayResults(finalTeamMembers);
     
     // Calculate team-specific questions and answers
-    const filteredTeamQuestionsToday = calculateTeamQuestionsToday(allTeamMembers);
-    const filteredTeamAnswersToday = calculateTeamAnswersToday(allTeamMembers);
+    const filteredTeamQuestionsToday = calculateTeamQuestionsToday(finalTeamMembers);
+    const filteredTeamAnswersToday = calculateTeamAnswersToday(finalTeamMembers);
     
     // Calculate team-specific focus and todos
-    const filteredTeamFocusToday = calculateTeamFocusToday(allTeamMembers);
-    const filteredTeamTodosToday = calculateTeamTodosToday(allTeamMembers);
-    
+    const filteredTeamFocusToday = calculateTeamFocusToday(finalTeamMembers);
+    const filteredTeamTodosToday = calculateTeamTodosToday(finalTeamMembers);
+
     return {
       ...teamData,
-      teamMembers: allTeamMembers,
+      teamMembers: finalTeamMembers,
       subteams: filteredSubteams,
       teamTodayGoals: filteredTeamTodayGoals,
       teamWeeklyProgress: filteredTeamWeeklyProgress,
@@ -1363,14 +1450,24 @@ export default function SimpleKanzleiablaufTeamPage() {
                     }, 0) || 0;
                     
                     
-                    // Monatsziel = Team-Ziel des Team-Leaders aus personal_targets
-                    const teamLeader = filteredData.teamMembers?.find(member => member.isTeamLeader);
-                    // Fallback wieder hinzufügen: personal_targets aus teamLeader oder currentUser
-                    const personalTargets = teamLeader?.personal_targets || teamData.currentUser?.personal_targets;
-                    const monthlyTarget = personalTargets?.[`${metric.key}_team_target`] as number || 0;
+                    // EINFACHE LÖSUNG: Statische Team-Leader-Zuordnung für Admins
+                    const teamLeaderMap: { [key: string]: string } = {
+                      'GameChanger': 'Daniel Kuhlen',
+                      'Goalgetter': 'Robin',
+                      'Proud': 'Robin', 
+                      'Eagles': 'Robin',
+                      'Visionäre': 'Robin',
+                      'Hurricane': 'Domenic',
+                      'Alpha': 'Robin',
+                      'Straw Hats': 'Andreas La Farina',
+                      'Eys Breaker': 'Patrick van Eys'
+                    };
                     
-                    
-                    // Monatsist = Summe der Monatsist-Zahlen aller Teammitglieder
+                    const teamLeaderName = teamLeaderMap[activeView];
+                    // Fallback: personalTargets aus teamLeader oder currentUser
+                    // Fix: TypeScript error - TeamMember has no personalTargets property
+                    // We assume personalTargets is on currentUser only
+                    const monthlyTarget = teamData.currentUser?.personalTargets?.[`${metric.key}_team_target`] as number || 0;
                     const monthlyCurrent = filteredData.teamMembers?.reduce((sum: number, member: any) => {
                       return sum + (member.monthlyProgress?.[`${metric.key}_actual` as keyof typeof member.monthlyProgress] as number || 0);
                     }, 0) || 0;

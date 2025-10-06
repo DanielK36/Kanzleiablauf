@@ -14,6 +14,9 @@ interface AnalyticsData {
   user_activity: any[];
   trends: any;
   alerts: any[];
+  teamAverages: any;
+  quotaAnalysis: any[];
+  performanceInsights: any[];
 }
 
 const METRICS = [
@@ -80,23 +83,23 @@ export default function AnalyticsPage() {
       <div className="max-w-7xl mx-auto space-y-6">
         
         {/* Header */}
-        <Card className="bg-gradient-to-r from-green-600 to-blue-600 text-white">
+        <Card className="bg-gradient-to-r from-purple-600 to-pink-600 text-white">
           <CardHeader>
             <div className="flex justify-between items-center">
               <div>
-                <CardTitle className="text-2xl">📊 Analytics Dashboard</CardTitle>
-                <p className="text-green-100 mt-2">Team-Performance und Benutzer-Aktivitäts-Analyse</p>
+                <CardTitle className="text-2xl">📊 Team Performance Dashboard</CardTitle>
+                <p className="text-purple-100 mt-2">Umfassende Performance-Analyse mit Quoten-Benchmarks und Insights</p>
               </div>
               <div className="flex space-x-3">
                 <Button 
                   onClick={() => setTimeframe('weekly')}
-                  className={timeframe === 'weekly' ? 'bg-white text-green-600' : 'bg-green-500 text-white'}
+                  className={timeframe === 'weekly' ? 'bg-white text-purple-600' : 'bg-purple-500 text-white'}
                 >
                   📅 Wöchentlich
                 </Button>
                 <Button 
                   onClick={() => setTimeframe('monthly')}
-                  className={timeframe === 'monthly' ? 'bg-white text-green-600' : 'bg-green-500 text-white'}
+                  className={timeframe === 'monthly' ? 'bg-white text-purple-600' : 'bg-purple-500 text-white'}
                 >
                   📊 Monatlich
                 </Button>
@@ -107,9 +110,12 @@ export default function AnalyticsPage() {
 
         {analyticsData && (
           <Tabs defaultValue="overview" className="space-y-6">
-            <TabsList className="grid w-full grid-cols-4">
+            <TabsList className="grid w-full grid-cols-6">
               <TabsTrigger value="overview" className="flex items-center gap-2">
                 📊 Übersicht
+              </TabsTrigger>
+              <TabsTrigger value="quotas" className="flex items-center gap-2">
+                📈 Quoten-Analyse
               </TabsTrigger>
               <TabsTrigger value="teams" className="flex items-center gap-2">
                 👥 Teams
@@ -117,8 +123,11 @@ export default function AnalyticsPage() {
               <TabsTrigger value="users" className="flex items-center gap-2">
                 👤 Benutzer
               </TabsTrigger>
-              <TabsTrigger value="trends" className="flex items-center gap-2">
-                📈 Trends
+              <TabsTrigger value="insights" className="flex items-center gap-2">
+                💡 Insights
+              </TabsTrigger>
+              <TabsTrigger value="alerts" className="flex items-center gap-2">
+                🚨 Alerts
               </TabsTrigger>
             </TabsList>
 
@@ -201,7 +210,74 @@ export default function AnalyticsPage() {
 
             </TabsContent>
 
-            {/* 2. Teams */}
+            {/* 2. Quoten-Analyse */}
+            <TabsContent value="quotas" className="space-y-6">
+              
+              {/* Team-Durchschnitte */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    📈 Team-Durchschnitte & Benchmarks
+                  </CardTitle>
+                  <p className="text-sm text-gray-600">Rolling 30/90 Tage Durchschnitte für alle Quoten</p>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                    {Object.entries(analyticsData.teamAverages || {}).map(([quota, value]) => (
+                      <div key={quota} className="text-center p-4 bg-blue-50 rounded-lg">
+                        <div className="text-sm font-medium text-blue-700 mb-2">
+                          {quota.replace('_', '/').toUpperCase()}
+                        </div>
+                        <div className="text-2xl font-bold text-blue-900 mb-1">
+                          {typeof value === 'number' ? value.toFixed(2) : '0.00'}
+                        </div>
+                        <div className="text-xs text-blue-600">
+                          Team-Durchschnitt
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Quoten-Analyse */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    📊 Quoten-Analyse Übersicht
+                  </CardTitle>
+                  <p className="text-sm text-gray-600">Status-Verteilung aller Quoten im System</p>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    {analyticsData.quotaAnalysis.map((analysis: any) => (
+                      <div key={analysis.metric} className="border rounded-lg p-4">
+                        <div className="flex justify-between items-center mb-3">
+                          <div className="text-lg font-medium text-gray-800">
+                            {analysis.metric.replace('_', '/').toUpperCase()}
+                          </div>
+                          <Badge variant={analysis.status === 'good' ? 'default' : analysis.status === 'warning' ? 'secondary' : analysis.status === 'excellent' ? 'default' : 'destructive'}>
+                            {analysis.status === 'good' ? '🟢' : analysis.status === 'warning' ? '🟡' : analysis.status === 'excellent' ? '🟢' : '🔴'}
+                          </Badge>
+                        </div>
+                        <div className="text-sm text-gray-600 mb-2">{analysis.message}</div>
+                        <div className="grid grid-cols-2 gap-4 text-sm">
+                          <div>
+                            <span className="font-medium">Quota:</span> {(analysis.quota * 100).toFixed(1)}%
+                          </div>
+                          <div>
+                            <span className="font-medium">Team-Durchschnitt:</span> {analysis.teamAvg.toFixed(2)}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+
+            </TabsContent>
+
+            {/* 3. Teams */}
             <TabsContent value="teams" className="space-y-6">
               
               {/* Team Performance Table */}
@@ -264,7 +340,7 @@ export default function AnalyticsPage() {
 
             </TabsContent>
 
-            {/* 3. Benutzer */}
+            {/* 4. Benutzer */}
             <TabsContent value="users" className="space-y-6">
               
               {/* User Activity Table */}
@@ -321,7 +397,55 @@ export default function AnalyticsPage() {
 
             </TabsContent>
 
-            {/* 4. Trends */}
+            {/* 5. Insights */}
+            <TabsContent value="insights" className="space-y-6">
+              
+              {/* Performance Insights */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    💡 Performance Insights
+                  </CardTitle>
+                  <p className="text-sm text-gray-600">Automatisch generierte Erkenntnisse und Handlungsempfehlungen</p>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    {analyticsData.performanceInsights?.map((insight: any, index: number) => (
+                      <div key={index} className={`p-4 rounded-lg border ${
+                        insight.type === 'success' ? 'bg-green-50 border-green-200 text-green-800' :
+                        insight.type === 'critical' ? 'bg-red-50 border-red-200 text-red-800' :
+                        insight.type === 'warning' ? 'bg-yellow-50 border-yellow-200 text-yellow-800' :
+                        'bg-blue-50 border-blue-200 text-blue-800'
+                      }`}>
+                        <div className="flex items-start gap-3">
+                          <div className="text-2xl">
+                            {insight.type === 'success' ? '✅' : 
+                             insight.type === 'critical' ? '🚨' : 
+                             insight.type === 'warning' ? '⚠️' : '💡'}
+                          </div>
+                          <div className="flex-1">
+                            <div className="font-medium mb-1">{insight.title}</div>
+                            <div className="text-sm mb-2">{insight.description}</div>
+                            <div className="text-sm font-medium mb-2">💡 Empfehlung: {insight.recommendation}</div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                    
+                    {(!analyticsData.performanceInsights || analyticsData.performanceInsights.length === 0) && (
+                      <div className="text-center py-8 text-gray-500">
+                        <div className="text-4xl mb-2">💡</div>
+                        <div>Keine besonderen Insights verfügbar</div>
+                        <div className="text-sm">Daten werden kontinuierlich analysiert</div>
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+
+            </TabsContent>
+
+            {/* 6. Trends */}
             <TabsContent value="trends" className="space-y-6">
               
               {/* Trend Analysis */}

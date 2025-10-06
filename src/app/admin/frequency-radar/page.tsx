@@ -20,6 +20,20 @@ interface TeamMember {
   highlight_yesterday?: string;
   help_needed?: string;
   improvement_today?: string;
+  quotas: {
+    appointments_per_fa: number;
+    recommendations_per_fa: number;
+    tiv_per_fa: number;
+    tgs_per_tiv: number;
+    bav_per_fa: number;
+  };
+  quotaAnalysis: {
+    appointments_per_fa: { status: string; message: string };
+    recommendations_per_fa: { status: string; message: string };
+    tiv_per_fa: { status: string; message: string };
+    tgs_per_tiv: { status: string; message: string };
+    bav_per_fa: { status: string; message: string };
+  };
 }
 
 interface TeamData {
@@ -28,6 +42,20 @@ interface TeamData {
   members: TeamMember[];
   weekly_totals: any;
   monthly_totals: any;
+  teamAverages: {
+    appointments_per_fa: number;
+    recommendations_per_fa: number;
+    tiv_per_fa: number;
+    tgs_per_tiv: number;
+    bav_per_fa: number;
+  };
+  quotaBenchmarks: {
+    appointments_per_fa: { min: number; max: number; avg: number };
+    recommendations_per_fa: { min: number; max: number; avg: number };
+    tiv_per_fa: { min: number; max: number; avg: number };
+    tgs_per_tiv: { min: number; max: number; avg: number };
+    bav_per_fa: { min: number; max: number; avg: number };
+  };
 }
 
 interface RadarData {
@@ -367,11 +395,17 @@ export default function FrequencyRadarPage() {
           </CardHeader>
         </Card>
 
-        {/* Three-Level Radar Tabs */}
+        {/* Five-Level Radar Tabs */}
         <Tabs defaultValue="numbers" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="numbers" className="flex items-center gap-2">
               📊 Zahlen-Radar
+            </TabsTrigger>
+            <TabsTrigger value="averages" className="flex items-center gap-2">
+              📈 Team-Durchschnitte
+            </TabsTrigger>
+            <TabsTrigger value="quotas" className="flex items-center gap-2">
+              📊 Quoten-Analyse
             </TabsTrigger>
             <TabsTrigger value="mirror" className="flex items-center gap-2">
               🪞 Spiegel-Radar
@@ -495,7 +529,158 @@ export default function FrequencyRadarPage() {
 
           </TabsContent>
 
-          {/* 2. Spiegel-Radar (Bedeutung + Handlung) */}
+          {/* 2. Team-Durchschnitte */}
+          <TabsContent value="averages" className="space-y-6">
+            
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  📈 Team-Durchschnitte & Benchmarks
+                </CardTitle>
+                <p className="text-sm text-gray-600">Rolling 30/90 Tage Durchschnitte für alle KPIs</p>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-6">
+                  {radarData?.teams.find(t => t.id === selectedTeam) && (
+                    <div className="border rounded-lg p-4">
+                      <h4 className="font-medium text-lg mb-4">
+                        {radarData.teams.find(t => t.id === selectedTeam)?.name}
+                      </h4>
+                      
+                      {/* Team-Durchschnitte */}
+                      <div className="mb-4">
+                        <h5 className="font-medium mb-2">📊 Team-Durchschnitte (30 Tage)</h5>
+                        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                          {Object.entries(radarData.teams.find(t => t.id === selectedTeam)?.teamAverages || {}).map(([quota, value]) => (
+                            <div key={quota} className="text-center p-3 bg-blue-50 rounded-lg">
+                              <div className="text-sm font-medium text-blue-700 mb-1">
+                                {quota.replace('_', '/').toUpperCase()}
+                              </div>
+                              <div className="text-lg font-bold text-blue-900">
+                                {typeof value === 'number' ? value.toFixed(2) : '0.00'}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Quoten-Benchmarks */}
+                      <div>
+                        <h5 className="font-medium mb-2">📈 Quoten-Benchmarks</h5>
+                        <div className="space-y-3">
+                          {Object.entries(radarData.teams.find(t => t.id === selectedTeam)?.quotaBenchmarks || {}).map(([quota, benchmark]) => (
+                            <div key={quota} className="p-3 bg-gray-50 rounded-lg">
+                              <div className="flex justify-between items-center mb-2">
+                                <div className="text-sm font-medium text-gray-700">
+                                  {quota.replace('_', '/').toUpperCase()}
+                                </div>
+                                <div className="text-xs text-gray-500">
+                                  Min: {benchmark.min.toFixed(2)} | Max: {benchmark.max.toFixed(2)}
+                                </div>
+                              </div>
+                              <div className="w-full bg-gray-200 rounded-full h-2">
+                                <div 
+                                  className="bg-blue-500 h-2 rounded-full"
+                                  style={{ width: `${(benchmark.avg / benchmark.max) * 100}%` }}
+                                ></div>
+                              </div>
+                              <div className="text-xs text-gray-600 mt-1">
+                                Durchschnitt: {benchmark.avg.toFixed(2)}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+
+          </TabsContent>
+
+          {/* 3. Quoten-Analyse */}
+          <TabsContent value="quotas" className="space-y-6">
+            
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  📊 Quoten-Analyse & Performance-Vergleich
+                </CardTitle>
+                <p className="text-sm text-gray-600">Individuelle Quoten vs. Team-Durchschnitt</p>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {radarData?.teams.find(t => t.id === selectedTeam)?.members.map(member => (
+                    <div key={member.id} className="border rounded-lg p-4">
+                      <div className="flex justify-between items-center mb-3">
+                        <div>
+                          <h4 className="font-medium">{member.name}</h4>
+                          <p className="text-sm text-gray-600">{member.role}</p>
+                        </div>
+                        <div className="text-sm text-gray-500">
+                          Team: {member.team_name}
+                        </div>
+                      </div>
+
+                      {/* Quoten-Vergleich */}
+                      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+                        {Object.entries(member.quotas).map(([quota, value]) => {
+                          const teamAvg = radarData.teams.find(t => t.id === selectedTeam)?.teamAverages[quota as keyof typeof radarData.teams[0]['teamAverages']] || 0;
+                          const analysis = member.quotaAnalysis[quota as keyof typeof member.quotaAnalysis];
+                          const delta = teamAvg > 0 ? ((value - teamAvg) / teamAvg) * 100 : 0;
+                          
+                          return (
+                            <div key={quota} className="text-center p-2 bg-gray-50 rounded">
+                              <div className="text-xs font-medium text-gray-700 mb-1">
+                                {quota.replace('_', '/').toUpperCase()}
+                              </div>
+                              <div className="text-sm font-bold text-gray-900 mb-1">
+                                {value.toFixed(2)}
+                              </div>
+                              <div className="text-xs text-gray-600 mb-1">
+                                Team: {teamAvg.toFixed(2)}
+                              </div>
+                              <div className="text-xs">
+                                <span className={`font-medium ${
+                                  delta > 10 ? 'text-green-600' : 
+                                  delta < -10 ? 'text-red-600' : 
+                                  'text-gray-600'
+                                }`}>
+                                  {delta > 0 ? '+' : ''}{delta.toFixed(0)}%
+                                </span>
+                              </div>
+                              <Badge 
+                                variant={analysis.status === 'good' ? 'default' : analysis.status === 'warning' ? 'secondary' : 'destructive'}
+                                className="mt-1 text-xs"
+                              >
+                                {analysis.status === 'good' ? '🟢' : analysis.status === 'warning' ? '🟡' : '🔴'}
+                              </Badge>
+                            </div>
+                          );
+                        })}
+                      </div>
+
+                      {/* Quoten-Insights */}
+                      <div className="mt-3 p-2 bg-blue-50 rounded">
+                        <div className="text-xs font-medium text-blue-800 mb-1">💡 Quoten-Insights:</div>
+                        <div className="text-xs text-blue-700">
+                          {Object.entries(member.quotaAnalysis).map(([quota, analysis]) => (
+                            <div key={quota}>
+                              {quota.replace('_', '/').toUpperCase()}: {analysis.message}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+
+          </TabsContent>
+
+          {/* 4. Spiegel-Radar (Bedeutung + Handlung) */}
           <TabsContent value="mirror" className="space-y-6">
             
             <Card>
@@ -539,7 +724,7 @@ export default function FrequencyRadarPage() {
 
           </TabsContent>
 
-          {/* 3. Frequenz-Radar (Resonanz + Energie) */}
+          {/* 5. Frequenz-Radar (Resonanz + Energie) */}
           <TabsContent value="frequency" className="space-y-6">
             
             <Card>

@@ -4,9 +4,6 @@ import { createSupabaseServerClient } from '@/lib/supabase';
 
 export async function GET() {
   try {
-    // Temporarily skip authentication for testing
-    console.log('🔍 DEBUG: Loading weekday questions (no auth check)');
-
     const supabase = createSupabaseServerClient();
 
     // Get all weekday questions
@@ -19,24 +16,21 @@ export async function GET() {
       console.error('Error fetching weekday questions:', error);
       return NextResponse.json({ error: 'Database error' }, { status: 500 });
     }
-
-    console.log('🔍 DEBUG: Found questions:', questions);
     
-    // Ensure all question fields are always parsed as JSON arrays for frontend
+    // Ensure all question fields are properly formatted for frontend
     const processedQuestions = questions?.map(q => ({
       ...q,
       yesterday_question: typeof q.yesterday_question === 'string' 
-        ? (q.yesterday_question ? [q.yesterday_question] : [])
+        ? (q.yesterday_question.startsWith('[') ? JSON.parse(q.yesterday_question) : [q.yesterday_question])
         : (Array.isArray(q.yesterday_question) ? q.yesterday_question : []),
       today_questions: typeof q.today_questions === 'string' 
         ? JSON.parse(q.today_questions) 
         : q.today_questions,
       trainee_question: typeof q.trainee_question === 'string' 
-        ? (q.trainee_question ? [q.trainee_question] : [])
+        ? (q.trainee_question.startsWith('[') ? JSON.parse(q.trainee_question) : [q.trainee_question])
         : (Array.isArray(q.trainee_question) ? q.trainee_question : [])
     })) || [];
 
-    console.log('🔍 DEBUG: Processed questions:', processedQuestions);
     return NextResponse.json(processedQuestions);
   } catch (error) {
     console.error('Error in GET /api/admin/weekday-questions:', error);
@@ -70,12 +64,12 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Missing weekday field' }, { status: 400 });
     }
 
-    // Format questions - convert arrays to JSON strings for database storage
+    // Format questions - only convert to JSON if it's actually an array with multiple items
     const formattedYesterdayQuestion = Array.isArray(yesterday_question) 
-      ? JSON.stringify(yesterday_question)
+      ? (yesterday_question.length > 1 ? JSON.stringify(yesterday_question) : yesterday_question[0] || '')
       : yesterday_question;
     const formattedTraineeQuestion = Array.isArray(trainee_question) 
-      ? JSON.stringify(trainee_question)
+      ? (trainee_question.length > 1 ? JSON.stringify(trainee_question) : trainee_question[0] || '')
       : trainee_question;
 
     let result;

@@ -42,10 +42,21 @@ function EventsSection() {
 
   const loadEvents = async () => {
     try {
-      const response = await fetch('/api/events?upcoming=true&limit=5');
+      const response = await fetch('/api/events?limit=5');
+      
       if (response.ok) {
         const result = await response.json();
-        setEvents(result.data || []);
+        
+        // Try with upcoming filter
+        const upcomingResponse = await fetch('/api/events?upcoming=true&limit=5');
+        if (upcomingResponse.ok) {
+          const upcomingResult = await upcomingResponse.json();
+          
+          // Use upcoming events if available, otherwise use all events
+          setEvents(upcomingResult.data?.length > 0 ? upcomingResult.data : result.data || []);
+        } else {
+          setEvents(result.data || []);
+        }
       }
     } catch (error) {
       console.error('Error loading events:', error);
@@ -237,19 +248,13 @@ export default function SimpleDashboardPage() {
   const [error, setError] = useState('');
   const loadDashboardData = async () => {
     try {
-      console.log('🔍 DEBUG: Starting API call to /api/dashboard-data');
       const response = await fetch('/api/dashboard-data');
-      console.log('🔍 DEBUG: API response status:', response.status);
       
       if (response.ok) {
         const data = await response.json();
-        console.log('🔍 DEBUG: API response data:', data);
         
         if (data.success) {
           setDashboardData(data.data);
-          console.log('🔍 DEBUG: Dashboard data set successfully');
-          console.log('🔍 DEBUG: teamMonthlyProgress:', data.data.teamMonthlyProgress);
-          console.log('🔍 DEBUG: teamGoals:', data.data.teamGoals);
         } else {
           console.error('❌ API returned success: false', data);
           setError('Fehler beim Laden der Dashboard-Daten');

@@ -101,6 +101,15 @@ export async function GET(request: NextRequest) {
           bav_checks_target: personalTargets[timeframe === 'weekly' ? 'bav_checks_weekly' : 'bav_checks_monthly_target'] || 0
         };
 
+        // Calculate quotas
+        const quotas = {
+          appointments_per_fa: totals.fa > 0 ? totals.new_appointments / totals.fa : 0,
+          recommendations_per_fa: totals.fa > 0 ? totals.recommendations / totals.fa : 0,
+          tiv_per_fa: totals.fa > 0 ? totals.tiv_invitations / totals.fa : 0,
+          tgs_per_tiv: totals.tiv_invitations > 0 ? totals.tgs_registrations / totals.tiv_invitations : 0,
+          bav_per_fa: totals.fa > 0 ? totals.bav_checks / totals.fa : 0
+        };
+
         // Get latest entry for highlights
         const latestEntry = memberEntries[0];
         
@@ -115,7 +124,9 @@ export async function GET(request: NextRequest) {
           daily_entries: memberEntries,
           highlight_yesterday: latestEntry?.highlight_yesterday,
           help_needed: latestEntry?.help_needed,
-          improvement_today: latestEntry?.improvement_today
+          improvement_today: latestEntry?.improvement_today,
+          quotas,
+          quotaAnalysis: analyzeQuotas(quotas, {}) // Will be filled with team averages later
         };
       });
 
@@ -147,12 +158,26 @@ export async function GET(request: NextRequest) {
         tiv_invitations_target: 0, taa_invitations_target: 0, tgs_registrations_target: 0, bav_checks_target: 0
       });
 
+      // Calculate team averages for quotas
+      const teamAverages = calculateTeamAverages(membersWithData);
+      
+      // Calculate quota benchmarks
+      const quotaBenchmarks = calculateQuotaBenchmarks(membersWithData);
+      
+      // Update quota analysis for each member with team averages
+      const membersWithQuotaAnalysis = membersWithData.map(member => ({
+        ...member,
+        quotaAnalysis: analyzeQuotas(member.quotas, teamAverages)
+      }));
+
       return {
         id: team.id.toString(),
         name: team.name,
-        members: membersWithData,
+        members: membersWithQuotaAnalysis,
         weekly_totals: teamTotals,
-        monthly_totals: teamTotals
+        monthly_totals: teamTotals,
+        teamAverages,
+        quotaBenchmarks
       };
     });
 
@@ -198,4 +223,68 @@ export async function GET(request: NextRequest) {
     console.error('Error in team radar API:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
+}
+
+// Helper functions
+function calculateTeamAverages(members: any[]) {
+  const quotas = ['appointments_per_fa', 'recommendations_per_fa', 'tiv_per_fa', 'tgs_per_tiv', 'bav_per_fa'];
+  const averages: any = {};
+  
+  quotas.forEach(quota => {
+    const values = members.map(member => member.quotas[quota]).filter(val => val > 0);
+    averages[quota] = values.length > 0 ? values.reduce((a, b) => a + b, 0) / values.length : 0;
+  });
+  
+  return averages;
+}
+
+function calculateQuotaBenchmarks(members: any[]) {
+  const quotas = ['appointments_per_fa', 'recommendations_per_fa', 'tiv_per_fa', 'tgs_per_tiv', 'bav_per_fa'];
+  const benchmarks: any = {};
+  
+  quotas.forEach(quota => {
+    const values = members.map(member => member.quotas[quota]).filter(val => val > 0);
+    if (values.length > 0) {
+      benchmarks[quota] = {
+        min: Math.min(...values),
+        max: Math.max(...values),
+        avg: values.reduce((a, b) => a + b, 0) / values.length
+      };
+    } else {
+      benchmarks[quota] = { min: 0, max: 0, avg: 0 };
+    }
+  });
+  
+  return benchmarks;
+}
+
+function analyzeQuotas(quotas: any, teamAverages: any) {
+  const analysis: any = {};
+  
+  Object.keys(quotas).forEach(quota => {
+    const own = quotas[quota];
+    const team = teamAverages[quota] || 0;
+    const delta = team > 0 ? ((own - team) / team) * 100 : 0;
+    
+    let status = 'good';
+    let message = 'Quota entspricht dem Team-Durchschnitt';
+    
+    if (delta < -20) {
+      status = 'critical';
+      message = 'Quota deutlich unter Team-Durchschnitt - Unterstützung erforderlich';
+    } else if (delta < -10) {
+      status = 'warning';
+      message = 'Quota leicht unter Team-Durchschnitt - Verbesserungspotenzial';
+    } else if (delta > 20) {
+      status = 'excellent';
+      message = 'Quota deutlich über Team-Durchschnitt - Best Practice teilen';
+    } else if (delta > 10) {
+      status = 'good';
+      message = 'Quota über Team-Durchschnitt - gute Performance';
+    }
+    
+    analysis[quota] = { status, message };
+  });
+  
+  return analysis;
 }

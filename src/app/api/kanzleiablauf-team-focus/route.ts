@@ -35,9 +35,9 @@ export async function GET(request: NextRequest) {
       .select('*')
       .eq('team_name', user.team_name)
       .eq('focus_date', today)
-      .single();
+      .maybeSingle(); // Use maybeSingle() instead of single() to avoid 500 error
 
-    if (error && error.code !== 'PGRST116') { // PGRST116 = no rows found
+    if (error) {
       console.error('Error loading team focus:', error);
       return NextResponse.json({ 
         success: false, 

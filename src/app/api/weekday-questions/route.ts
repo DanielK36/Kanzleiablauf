@@ -37,12 +37,18 @@ export async function GET(request: NextRequest) {
       return NextResponse.json(defaultQuestions);
     }
 
-    // Ensure today_questions is always an array
+    // Ensure all question fields are properly formatted
     const response = {
       ...weekdayQuestion,
+      yesterday_question: typeof weekdayQuestion.yesterday_question === 'string' 
+        ? (weekdayQuestion.yesterday_question.startsWith('[') ? JSON.parse(weekdayQuestion.yesterday_question)[0] : weekdayQuestion.yesterday_question)
+        : weekdayQuestion.yesterday_question,
       today_questions: typeof weekdayQuestion.today_questions === 'string'
         ? JSON.parse(weekdayQuestion.today_questions)
-        : weekdayQuestion.today_questions
+        : weekdayQuestion.today_questions,
+      trainee_question: typeof weekdayQuestion.trainee_question === 'string' 
+        ? (weekdayQuestion.trainee_question.startsWith('[') ? JSON.parse(weekdayQuestion.trainee_question)[0] : weekdayQuestion.trainee_question)
+        : weekdayQuestion.trainee_question
     };
 
     return NextResponse.json(response);

@@ -76,6 +76,21 @@ export async function GET(request: NextRequest) {
       bav_checks_target: personalTargets.bav_checks_weekly || 0
     };
 
+    // Calculate quotas
+    const quotas = {
+      appointments_per_fa: totals.fa > 0 ? totals.new_appointments / totals.fa : 0,
+      recommendations_per_fa: totals.fa > 0 ? totals.recommendations / totals.fa : 0,
+      tiv_per_fa: totals.fa > 0 ? totals.tiv_invitations / totals.fa : 0,
+      tgs_per_tiv: totals.tiv_invitations > 0 ? totals.tgs_registrations / totals.tiv_invitations : 0,
+      bav_per_fa: totals.fa > 0 ? totals.bav_checks / totals.fa : 0
+    };
+
+    // Get team averages for quota comparison
+    const teamAverages = await getTeamAverages(partner.team_name);
+
+    // Analyze quotas
+    const quotaAnalysis = analyzeQuotas(quotas, teamAverages);
+
     // Generate conversation points based on performance
     const conversationPoints = [];
     const progress = { ...totals, ...targets };
@@ -120,6 +135,12 @@ export async function GET(request: NextRequest) {
       conversationPoints.push(`📝 Keine Tageseinträge diese Woche - Gibt es Hindernisse bei der Dateneingabe?`);
     }
 
+    // Generate agenda snippets
+    const agendaSnippets = generateAgendaSnippets(quotas, quotaAnalysis, totals);
+
+    // Generate quota insights
+    const quotaInsights = generateQuotaInsights(quotas, teamAverages, quotaAnalysis);
+
     // Get latest entry for highlights
     const latestEntry = dailyEntries[0];
 
@@ -133,11 +154,16 @@ export async function GET(request: NextRequest) {
         daily_entries: dailyEntries,
         highlight_yesterday: latestEntry?.highlight_yesterday,
         help_needed: latestEntry?.help_needed,
-        improvement_today: latestEntry?.improvement_today
+        improvement_today: latestEntry?.improvement_today,
+        quotas,
+        teamAverages,
+        quotaAnalysis
       },
       conversation_points: conversationPoints,
       action_items: [],
-      next_steps: []
+      next_steps: [],
+      agenda_snippets: agendaSnippets,
+      quota_insights: quotaInsights
     };
 
     return NextResponse.json(conversationData);
@@ -181,5 +207,139 @@ export async function POST(request: NextRequest) {
     console.error('Error in weekly conversation POST API:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
+}
+
+// Helper functions
+async function getTeamAverages(teamName: string) {
+  const supabase = createSupabaseServerClient();
+  
+  // Get team members
+  const { data: teamMembers, error: membersError } = await supabase
+    .from('users')
+    .select('id')
+    .eq('team_name', teamName);
+
+  if (membersError || !teamMembers) return {};
+
+  const memberIds = teamMembers.map(m => m.id);
+  
+  // Get last 30 days of data
+  const thirtyDaysAgo = new Date();
+  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+  const { data: entries, error: entriesError } = await supabase
+    .from('daily_entries')
+    .select('fa, new_appointments, recommendations, tiv_invitations, tgs_registrations, bav_checks')
+    .in('user_id', memberIds)
+    .gte('entry_date', thirtyDaysAgo.toISOString().split('T')[0]);
+
+  if (entriesError || !entries) return {};
+
+  // Calculate averages
+  const totals = entries.reduce((acc, entry) => {
+    Object.keys(entry).forEach(key => {
+      if (typeof entry[key] === 'number') {
+        acc[key] = (acc[key] || 0) + entry[key];
+      }
+    });
+    return acc;
+  }, {} as any);
+
+  const count = entries.length;
+  
+  return {
+    appointments_per_fa: totals.fa > 0 ? totals.new_appointments / totals.fa : 0,
+    recommendations_per_fa: totals.fa > 0 ? totals.recommendations / totals.fa : 0,
+    tiv_per_fa: totals.fa > 0 ? totals.tiv_invitations / totals.fa : 0,
+    tgs_per_tiv: totals.tiv_invitations > 0 ? totals.tgs_registrations / totals.tiv_invitations : 0,
+    bav_per_fa: totals.fa > 0 ? totals.bav_checks / totals.fa : 0
+  };
+}
+
+function analyzeQuotas(quotas: any, teamAverages: any) {
+  const analysis: any = {};
+  
+  Object.keys(quotas).forEach(quota => {
+    const own = quotas[quota];
+    const team = teamAverages[quota] || 0;
+    const delta = team > 0 ? ((own - team) / team) * 100 : 0;
+    
+    let status = 'good';
+    let message = 'Quota entspricht dem Team-Durchschnitt';
+    
+    if (delta < -20) {
+      status = 'critical';
+      message = 'Quota deutlich unter Team-Durchschnitt - Unterstützung erforderlich';
+    } else if (delta < -10) {
+      status = 'warning';
+      message = 'Quota leicht unter Team-Durchschnitt - Verbesserungspotenzial';
+    } else if (delta > 20) {
+      status = 'excellent';
+      message = 'Quota deutlich über Team-Durchschnitt - Best Practice teilen';
+    } else if (delta > 10) {
+      status = 'good';
+      message = 'Quota über Team-Durchschnitt - gute Performance';
+    }
+    
+    analysis[quota] = { status, message };
+  });
+  
+  return analysis;
+}
+
+function generateAgendaSnippets(quotas: any, quotaAnalysis: any, totals: any) {
+  const snippets = [];
+  
+  // Based on quota performance
+  if (quotaAnalysis.appointments_per_fa?.status === 'critical') {
+    snippets.push('📅 Termine pro FA optimieren - Qualität vs. Quantität besprechen');
+  }
+  
+  if (quotaAnalysis.recommendations_per_fa?.status === 'critical') {
+    snippets.push('⭐ Empfehlungsgespräche verstärken - Transfer-Techniken üben');
+  }
+  
+  if (quotaAnalysis.tiv_per_fa?.status === 'critical') {
+    snippets.push('🤝 TIV-Quote verbessern - Netzwerkaufbau strategisch angehen');
+  }
+  
+  if (quotaAnalysis.tgs_per_tiv?.status === 'critical') {
+    snippets.push('📋 TGS-Conversion steigern - Follow-up-Prozesse optimieren');
+  }
+  
+  if (quotaAnalysis.bav_per_fa?.status === 'critical') {
+    snippets.push('🏦 bAV-Checks erhöhen - Qualitätsanker stärken');
+  }
+  
+  // Based on absolute numbers
+  if (totals.fa > 0 && totals.recommendations === 0) {
+    snippets.push('📈 FA-Erfolg nicht in Empfehlungen umgesetzt - Transfer-Strategie entwickeln');
+  }
+  
+  if (totals.new_appointments > 0 && totals.tiv_invitations === 0) {
+    snippets.push('📅 Termine führen nicht zu TIV - Gesprächsqualität verbessern');
+  }
+  
+  return snippets;
+}
+
+function generateQuotaInsights(quotas: any, teamAverages: any, quotaAnalysis: any) {
+  const insights = [];
+  
+  Object.keys(quotas).forEach(quota => {
+    const own = quotas[quota];
+    const team = teamAverages[quota] || 0;
+    const analysis = quotaAnalysis[quota];
+    
+    if (analysis.status === 'critical') {
+      insights.push(`🔴 ${quota.replace('_', '/').toUpperCase()}: ${own.toFixed(2)} vs. Team ${team.toFixed(2)} - Sofortige Maßnahmen erforderlich`);
+    } else if (analysis.status === 'warning') {
+      insights.push(`🟡 ${quota.replace('_', '/').toUpperCase()}: ${own.toFixed(2)} vs. Team ${team.toFixed(2)} - Verbesserungspotenzial identifiziert`);
+    } else if (analysis.status === 'excellent') {
+      insights.push(`🟢 ${quota.replace('_', '/').toUpperCase()}: ${own.toFixed(2)} vs. Team ${team.toFixed(2)} - Best Practice für Team`);
+    }
+  });
+  
+  return insights;
 }
 

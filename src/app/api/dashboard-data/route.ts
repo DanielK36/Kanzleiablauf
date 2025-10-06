@@ -2,6 +2,32 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { createSupabaseServerClient } from '@/lib/supabase';
 
+// Rekursive Funktion um alle Subteam-Mitglieder zu laden
+async function getAllSubteamMembers(supabase: any, teamLeaderId: string): Promise<any[]> {
+  const allMembers: any[] = [];
+  
+  // Lade direkte Untergebene
+  const { data: directMembers, error } = await supabase
+    .from('users')
+    .select('id, name, role, team_id, team_name, personal_targets, parent_leader_id, is_team_leader')
+    .eq('parent_leader_id', teamLeaderId);
+  
+  if (error || !directMembers) {
+    return allMembers;
+  }
+  
+  // Füge direkte Mitglieder hinzu
+  allMembers.push(...directMembers);
+  
+  // Für jeden direkten Untergebenen: rekursiv nach weiteren Untergebenen suchen
+  for (const member of directMembers) {
+    const subMembers = await getAllSubteamMembers(supabase, member.id);
+    allMembers.push(...subMembers);
+  }
+  
+  return allMembers;
+}
+
 // EINFACHE API für Dashboard - ALLE Daten auf einmal
 export async function GET(request: NextRequest) {
   try {
@@ -132,6 +158,7 @@ export async function GET(request: NextRequest) {
       .eq('user_id', user.id)
       .gte('entry_date', startOfMonth)
       .lte('entry_date', endOfMonth);
+    
 
     if (ownDailyEntriesError) {
       return NextResponse.json({ 
@@ -214,6 +241,7 @@ export async function GET(request: NextRequest) {
         .eq('user_id', user.id)
         .gte('entry_date', weeklyStartStr)
         .lte('entry_date', weeklyEndStr);
+      
 
       if (weeklyEntriesError) {
         return NextResponse.json({ 
@@ -282,20 +310,15 @@ export async function GET(request: NextRequest) {
       directTeamUsers = directSubordinates.filter(u => !u.is_team_leader);
       const teamLeaders = directSubordinates.filter(u => u.is_team_leader);
       
-      // Für jeden Team-Leader: Subteam-Mitglieder laden
+      // Für jeden Team-Leader: Subteam-Mitglieder laden (rekursiv)
       for (const teamLeader of teamLeaders) {
-        const { data: subteamMembers, error: subteamMembersError } = await supabase
-          .from('users')
-          .select('id, name, role, team_id, team_name, personal_targets, parent_leader_id')
-          .eq('parent_leader_id', teamLeader.id);
+        const allSubteamMembers = await getAllSubteamMembers(supabase, teamLeader.id);
         
-        if (!subteamMembersError && subteamMembers) {
-          subteams.push({
-            teamLeader: teamLeader,
-            members: subteamMembers,
-            isSubteam: true
-          });
-        }
+        subteams.push({
+          teamLeader: teamLeader,
+          members: allSubteamMembers,
+          isSubteam: true
+        });
       }
     } else {
       // User hat keine direkten Untergebenen - zeige nur sich selbst
@@ -405,12 +428,36 @@ export async function GET(request: NextRequest) {
       allTeamMembersBasedOnTeamName = data || [];
       allTeamMembersError = error;
     } else {
-      // Nicht-Admins sehen nur ihre Hierarchie
-      allTeamMembersBasedOnTeamName = [
+      // Nicht-Admins sehen ihre Hierarchie + alle Team-Mitglieder mit derselben team_name
+      const hierarchyUsers = [
         user, // Current user
         ...directTeamUsers, // Direct subordinates
         ...subteams.flatMap(subteam => [subteam.teamLeader, ...subteam.members]) // Subteam members
       ];
+      
+      // Zusätzlich: Alle User mit derselben team_name laden
+      const { data: sameTeamUsers, error: sameTeamError } = await supabase
+        .from('users')
+        .select('id, name, role, team_id, team_name, personal_targets, parent_leader_id, is_team_leader')
+        .eq('team_name', user.team_name);
+      
+      if (sameTeamUsers) {
+        // Kombiniere Hierarchie + Team-Mitglieder (ohne Duplikate)
+        const allUsers = [...hierarchyUsers];
+        const existingIds = new Set(hierarchyUsers.map(u => u.id));
+        
+        for (const teamUser of sameTeamUsers) {
+          if (!existingIds.has(teamUser.id)) {
+            allUsers.push(teamUser);
+            existingIds.add(teamUser.id);
+          }
+        }
+        
+        allTeamMembersBasedOnTeamName = allUsers;
+      } else {
+        allTeamMembersBasedOnTeamName = hierarchyUsers;
+      }
+      
     }
 
     // 10. Team Members mit Daten aufbauen
@@ -719,7 +766,7 @@ export async function GET(request: NextRequest) {
         role: teamUser.role,
         isTrainee: teamUser.role === 'trainee',
         team_name: teamUser.team_name, // WICHTIG: team_name hinzufügen
-        personal_targets: teamUser.personal_targets, // WICHTIG: personal_targets hinzufügen
+        personalTargets: teamUser.personal_targets, // WICHTIG: personalTargets hinzufügen (camelCase)
         yesterdayResults,
         yesterdayGoals,
         todayGoals,
@@ -948,15 +995,15 @@ export async function GET(request: NextRequest) {
           team_name: user.team_name || userTeam?.name || 'Kein Team',
           is_team_leader: user.is_team_leader,
           role: user.role,
-          personal_targets: user.personal_targets
+          personalTargets: user.personal_targets
         },
         
         // Debug: Log currentUser data being sent
         debug_currentUser: {
           id: user.id,
           name: user.name,
-          personal_targets: user.personal_targets,
-          has_personal_targets: !!user.personal_targets
+          personalTargets: user.personal_targets,
+          hasPersonalTargets: !!user.personal_targets
         },
         // Team Members (nur direkte Team-Mitglieder)
         teamMembers: teamMembers,
