@@ -512,6 +512,15 @@ export default function SimpleKanzleiablaufTeamPage() {
       return teamData;
     }
 
+    // NEU: "Meine Ansicht" - Alle Mitglieder ohne Filter
+    if (selectedTeam === 'current-user') {
+      return {
+        ...teamData,
+        teamMembers: teamData.teamMembers || [],
+        subteams: teamData.subteams || []
+      };
+    }
+
     // Filter subteams basierend auf ausgewähltem Team
     let filteredSubteams = [];
     
