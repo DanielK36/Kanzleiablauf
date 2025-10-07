@@ -10,6 +10,14 @@ export function AfterSignIn() {
 
   useEffect(() => {
     if (isLoaded && user) {
+      // Check if this is a sign-in (not sign-up)
+      const isSignIn = sessionStorage.getItem('clerk_sign_in') === 'true';
+      if (isSignIn) {
+        sessionStorage.removeItem('clerk_sign_in');
+        router.push('/simple-dashboard');
+        return;
+      }
+      
       // Always redirect to simple-dashboard after sign-in
       // Check if we're not already on a protected page
       const currentPath = window.location.pathname;

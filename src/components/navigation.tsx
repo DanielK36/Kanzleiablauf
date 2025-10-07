@@ -43,18 +43,18 @@ export default function Navigation() {
   }
 
   return (
-    <nav className="bg-white dark:bg-gray-800 shadow-sm border-b dark:border-gray-700">
+    <nav className="bg-white shadow-sm border-b">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
           <div className="flex items-center space-x-8">
-            <Link href="/" className="text-xl font-bold text-gray-900 dark:text-white">
+            <Link href="/" className="text-xl font-bold text-gray-900">
               Leadership System
             </Link>
             
             {/* Mobile menu button */}
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="md:hidden p-2 rounded-md text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+              className="md:hidden p-2 rounded-md text-gray-700 hover:bg-gray-100"
             >
               <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 {mobileMenuOpen ? (
@@ -70,8 +70,8 @@ export default function Navigation() {
                 href="/simple-dashboard" 
                 className={`text-sm font-medium transition-colors ${
                   isActive('/simple-dashboard') 
-                    ? 'text-blue-600 dark:text-blue-400 border-b-2 border-blue-600 pb-1' 
-                    : 'text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white'
+                    ? 'text-blue-600 text-blue-600 border-b-2 border-blue-600 pb-1' 
+                    : 'text-gray-700 text-gray-700 hover:text-gray-900 hover:text-gray-900'
                 }`}
               >
                 Dashboard
@@ -81,8 +81,8 @@ export default function Navigation() {
                 href="/simple-kanzleiablauf-v3" 
                 className={`text-sm font-medium transition-colors ${
                   isActive('/simple-kanzleiablauf-v3') 
-                    ? 'text-blue-600 dark:text-blue-400 border-b-2 border-blue-600 pb-1' 
-                    : 'text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white'
+                    ? 'text-blue-600 text-blue-600 border-b-2 border-blue-600 pb-1' 
+                    : 'text-gray-700 text-gray-700 hover:text-gray-900 hover:text-gray-900'
                 }`}
               >
                 Kanzleiablauf
@@ -92,8 +92,8 @@ export default function Navigation() {
                 href="/simple-kanzleiablauf-team" 
                 className={`text-sm font-medium transition-colors ${
                   isActive('/simple-kanzleiablauf-team') 
-                    ? 'text-blue-600 dark:text-blue-400 border-b-2 border-blue-600 pb-1' 
-                    : 'text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white'
+                    ? 'text-blue-600 text-blue-600 border-b-2 border-blue-600 pb-1' 
+                    : 'text-gray-700 text-gray-700 hover:text-gray-900 hover:text-gray-900'
                 }`}
               >
                 Team-Übersicht
@@ -105,8 +105,8 @@ export default function Navigation() {
                   href="/admin/dashboard" 
                   className={`text-sm font-medium transition-colors ${
                     isActive('/admin/dashboard') || pathname.startsWith('/admin/')
-                      ? 'text-blue-600 dark:text-blue-400 border-b-2 border-blue-600 pb-1' 
-                      : 'text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white'
+                      ? 'text-blue-600 text-blue-600 border-b-2 border-blue-600 pb-1' 
+                      : 'text-gray-700 text-gray-700 hover:text-gray-900 hover:text-gray-900'
                   }`}
                 >
                   🌌 Admin
@@ -116,7 +116,7 @@ export default function Navigation() {
           </div>
           
           <div className="hidden md:flex items-center space-x-4">
-            <span className="text-sm text-gray-600 dark:text-gray-300">
+            <span className="text-sm text-gray-600 text-gray-700">
               {userData?.name?.split(' ')[0] || user?.firstName || 'Benutzer'}
             </span>
             <SignOutButton redirectUrl="/">
@@ -134,8 +134,8 @@ export default function Navigation() {
               href="/simple-dashboard" 
               className={`block px-4 py-2 text-sm font-medium rounded transition-colors ${
                 isActive('/simple-dashboard') 
-                  ? 'bg-blue-50 dark:bg-blue-900 text-blue-600 dark:text-blue-400' 
-                  : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                  ? 'bg-blue-50 bg-blue-50 text-blue-600 text-blue-600' 
+                  : 'text-gray-700 text-gray-700 hover:bg-gray-100 hover:bg-gray-100'
               }`}
               onClick={() => setMobileMenuOpen(false)}
             >
@@ -146,8 +146,8 @@ export default function Navigation() {
               href="/simple-kanzleiablauf-v3" 
               className={`block px-4 py-2 text-sm font-medium rounded transition-colors ${
                 isActive('/simple-kanzleiablauf-v3') 
-                  ? 'bg-blue-50 dark:bg-blue-900 text-blue-600 dark:text-blue-400' 
-                  : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                  ? 'bg-blue-50 bg-blue-50 text-blue-600 text-blue-600' 
+                  : 'text-gray-700 text-gray-700 hover:bg-gray-100 hover:bg-gray-100'
               }`}
               onClick={() => setMobileMenuOpen(false)}
             >
@@ -158,8 +158,8 @@ export default function Navigation() {
               href="/simple-kanzleiablauf-team" 
               className={`block px-4 py-2 text-sm font-medium rounded transition-colors ${
                 isActive('/simple-kanzleiablauf-team') 
-                  ? 'bg-blue-50 dark:bg-blue-900 text-blue-600 dark:text-blue-400' 
-                  : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                  ? 'bg-blue-50 bg-blue-50 text-blue-600 text-blue-600' 
+                  : 'text-gray-700 text-gray-700 hover:bg-gray-100 hover:bg-gray-100'
               }`}
               onClick={() => setMobileMenuOpen(false)}
             >
@@ -172,8 +172,8 @@ export default function Navigation() {
                 href="/admin/dashboard" 
                 className={`block px-4 py-2 text-sm font-medium rounded transition-colors ${
                   isActive('/admin/dashboard') || pathname.startsWith('/admin/')
-                    ? 'bg-blue-50 dark:bg-blue-900 text-blue-600 dark:text-blue-400' 
-                    : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                    ? 'bg-blue-50 bg-blue-50 text-blue-600 text-blue-600' 
+                    : 'text-gray-700 text-gray-700 hover:bg-gray-100 hover:bg-gray-100'
                 }`}
                 onClick={() => setMobileMenuOpen(false)}
               >
@@ -181,8 +181,8 @@ export default function Navigation() {
               </Link>
             )}
             
-            <div className="px-4 py-2 border-t dark:border-gray-700 mt-2 pt-2">
-              <div className="text-sm text-gray-600 dark:text-gray-300 mb-2">
+            <div className="px-4 py-2 border-t border-gray-200 mt-2 pt-2">
+              <div className="text-sm text-gray-600 text-gray-700 mb-2">
                 {userData?.name?.split(' ')[0] || user?.firstName || 'Benutzer'}
               </div>
               <SignOutButton redirectUrl="/">

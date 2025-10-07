@@ -27,11 +27,7 @@ export default function SimpleKanzleiablaufPage() {
   const currentWeekday = new Date().getDay() || 7;
   
   // Weekday questions
-  const [weekdayQuestions, setWeekdayQuestions] = useState({
-    yesterday: "Was sind deine drei Diamanten von den Samstagsschulungen?",
-    today: ["Welche Beratungen sollen diese Woche durchgesprochen werden?"],
-    trainee: "Ein großer Test"
-  });
+  const [weekdayQuestions, setWeekdayQuestions] = useState<any>(null);
 
   // Weekly Goals & Progress
   const [weeklyGoals, setWeeklyGoals] = useState({
@@ -156,14 +152,19 @@ export default function SimpleKanzleiablaufPage() {
   useEffect(() => {
     if (isLoaded && user) {
       loadUserData();
+      loadWeekdayQuestions();
     }
   }, [isLoaded, user]);
 
   const loadWeekdayQuestions = async () => {
     try {
-      const questions = await getWeekdayQuestions(currentWeekday, false);
-      setWeekdayQuestions(questions);
+      const response = await fetch(`/api/weekday-questions?weekday=${currentWeekday}`);
+      if (response.ok) {
+        const data = await response.json();
+        setWeekdayQuestions(data);
+      }
     } catch (error) {
+      console.error('Error loading weekday questions:', error);
     }
   };
 
@@ -337,6 +338,14 @@ export default function SimpleKanzleiablaufPage() {
           // Load weekday answers
           if (yesterdayData.data.weekdayAnswers) {
             setWeekdayAnswers(yesterdayData.data.weekdayAnswers);
+            
+            // Sync weekday answers to todayAnswers for team page compatibility
+            setTodayAnswers(prev => ({
+              ...prev,
+              help_needed: yesterdayData.data.weekdayAnswers[0] || prev.help_needed,
+              training_focus: yesterdayData.data.weekdayAnswers[1] || prev.training_focus,
+              improvementToday: yesterdayData.data.weekdayAnswers[2] || prev.improvementToday
+            }));
           }
         } else {
         }
@@ -370,8 +379,10 @@ export default function SimpleKanzleiablaufPage() {
           highlightYesterday: yesterdayResults.highlightYesterday,
           appointmentsNextWeek: yesterdayResults.appointmentsNextWeek,
           improvementToday: todayAnswers.improvementToday,
-          help_needed: todayAnswers.help_needed,
-          training_focus: todayAnswers.training_focus,
+          // Map weekday answers to expected structure for team page
+          help_needed: weekdayAnswers[0] || todayAnswers.help_needed,
+          training_focus: weekdayAnswers[1] || todayAnswers.training_focus,
+          improvement_today: weekdayAnswers[2] || todayAnswers.improvementToday,
           improvement_focus: todayAnswers.improvement_focus || "",
           weekdayAnswers: weekdayAnswers,
           weeklyImprovement: yesterdayResults.weeklyImprovement,
@@ -589,7 +600,7 @@ export default function SimpleKanzleiablaufPage() {
                 {currentWeekday === 1 && (
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      {weekdayQuestions.yesterday}
+                      {weekdayQuestions && weekdayQuestions.yesterday_question ? weekdayQuestions.yesterday_question : 'Was sind deine drei Diamanten von gestern?'}
                     </label>
                     <input
                       type="text"
@@ -743,69 +754,27 @@ export default function SimpleKanzleiablaufPage() {
                 </div>
               </div>
 
-              {/* Standard Daily Questions */}
-              <div className="space-y-3">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Wobei brauchst du heute Hilfe?
-                  </label>
-                  <input
-                    type="text"
-                    value={todayAnswers.help_needed}
-                    onChange={(e) => setTodayAnswers(prev => ({
-                      ...prev,
-                      help_needed: e.target.value
-                    }))}
-                    className="w-full p-2 border border-gray-300 rounded-md"
-                  />
+              {/* Weekday-specific questions for TODAY */}
+              {weekdayQuestions && weekdayQuestions.today_questions && (
+                <div className="space-y-3">
+                  {weekdayQuestions.today_questions.map((question, index) => (
+                    <div key={index}>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        {question}
+                      </label>
+                      <input
+                        type="text"
+                        value={weekdayAnswers[index] || ""}
+                        onChange={(e) => setWeekdayAnswers(prev => ({
+                          ...prev,
+                          [index]: e.target.value
+                        }))}
+                        className="w-full p-2 border border-gray-300 rounded-md"
+                      />
+                    </div>
+                  ))}
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Was willst du heute trainieren?
-                  </label>
-                  <input
-                    type="text"
-                    value={todayAnswers.training_focus}
-                    onChange={(e) => setTodayAnswers(prev => ({
-                      ...prev,
-                      training_focus: e.target.value
-                    }))}
-                    className="w-full p-2 border border-gray-300 rounded-md"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Was willst du heute noch besser machen?
-                  </label>
-                  <input
-                    type="text"
-                    value={todayAnswers.improvementToday || ""}
-                    onChange={(e) => setTodayAnswers(prev => ({
-                      ...prev,
-                      improvementToday: e.target.value
-                    }))}
-                    className="w-full p-2 border border-gray-300 rounded-md"
-                  />
-                </div>
-                
-                {/* Weekday-specific questions for TODAY */}
-                {weekdayQuestions.today.map((question, index) => (
-                  <div key={index}>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      {question}
-                    </label>
-                    <input
-                      type="text"
-                      value={weekdayAnswers[index] || ""}
-                      onChange={(e) => setWeekdayAnswers(prev => ({
-                        ...prev,
-                        [index]: e.target.value
-                      }))}
-                      className="w-full p-2 border border-gray-300 rounded-md"
-                    />
-                  </div>
-                ))}
-              </div>
+              )}
             </div>
           </CardContent>
         </Card>

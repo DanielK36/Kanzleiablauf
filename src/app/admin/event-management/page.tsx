@@ -157,6 +157,24 @@ export default function AdminEventManagementPage() {
   const handleEventSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    // Validierung
+    if (!eventFormData.title.trim()) {
+      alert('Bitte geben Sie einen Titel ein.');
+      return;
+    }
+    if (!eventFormData.event_date) {
+      alert('Bitte wählen Sie ein Datum aus.');
+      return;
+    }
+    if (!eventFormData.start_time) {
+      alert('Bitte geben Sie eine Startzeit ein.');
+      return;
+    }
+    if (!eventFormData.end_time) {
+      alert('Bitte geben Sie eine Endzeit ein.');
+      return;
+    }
+    
     try {
       const method = editingEvent ? 'PUT' : 'POST';
       const body = editingEvent ? { id: editingEvent.id, ...eventFormData } : eventFormData;
@@ -766,6 +784,9 @@ export default function AdminEventManagementPage() {
                               {category.label}
                             </SelectItem>
                           ))}
+                          <SelectItem value="CUSTOM">
+                            🎯 Benutzerdefiniert
+                          </SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
@@ -775,6 +796,7 @@ export default function AdminEventManagementPage() {
                         id="topic"
                         value={eventFormData.topic}
                         onChange={(e) => setEventFormData(prev => ({ ...prev, topic: e.target.value }))}
+                        placeholder={eventFormData.event_category === 'CUSTOM' ? 'Benutzerdefinierte Kategorie eingeben...' : 'Topic eingeben...'}
                       />
                     </div>
                   </div>

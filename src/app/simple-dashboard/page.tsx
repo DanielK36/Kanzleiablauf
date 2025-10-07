@@ -84,7 +84,7 @@ function EventsSection() {
         <CardContent>
           <div className="text-center py-8">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
-            <p className="text-gray-600">Lade Veranstaltungen...</p>
+            <p className="text-gray-900">Lade Veranstaltungen...</p>
           </div>
         </CardContent>
       </Card>
@@ -94,12 +94,12 @@ function EventsSection() {
   return (
     <Card>
       <CardHeader>
-        <div className="flex justify-between items-center">
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
           <CardTitle className="text-xl">📅 Veranstaltungen</CardTitle>
-          <Link href="/speaker-registration">
+          <Link href="/speaker-registration" className="w-full sm:w-auto">
             <Button 
               size="lg" 
-              className="bg-gradient-to-r from-yellow-400 to-yellow-600 hover:from-yellow-500 hover:to-yellow-700 text-white font-bold shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105"
+              className="w-full sm:w-auto bg-gradient-to-r from-yellow-400 to-yellow-600 hover:from-yellow-500 hover:to-yellow-700 text-white font-bold shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105"
             >
               🎤 Als Referent bewerben
             </Button>
@@ -108,7 +108,7 @@ function EventsSection() {
       </CardHeader>
       <CardContent>
         {events.length === 0 ? (
-          <div className="text-center py-8 text-gray-500">
+          <div className="text-center py-8 text-gray-900">
             <div className="text-4xl mb-4">📅</div>
             <p>Keine kommenden Veranstaltungen</p>
             <p className="text-sm mt-2">Veranstaltungen werden hier angezeigt</p>
@@ -120,8 +120,8 @@ function EventsSection() {
                 <div className="flex justify-between items-start">
                   <div className="flex-1">
                     <h3 className="font-semibold text-gray-900 mb-1">{event.title}</h3>
-                    <p className="text-sm text-gray-600 mb-2">{event.description}</p>
-                    <div className="flex items-center space-x-4 text-sm text-gray-500">
+                    <p className="text-sm text-gray-900 mb-2">{event.description}</p>
+                    <div className="flex items-center space-x-4 text-sm text-gray-900">
                       <span>📅 {new Date(event.event_date).toLocaleDateString('de-DE')}</span>
                       <span>🕐 {event.start_time} - {event.end_time}</span>
                       <span>📍 {event.location}</span>
@@ -133,7 +133,7 @@ function EventsSection() {
                     </div>
                     {event.event_speakers && event.event_speakers.length > 0 && (
                       <div className="mt-2">
-                        <p className="text-sm text-gray-600">Referenten:</p>
+                        <p className="text-sm text-gray-900">Referenten:</p>
                         <div className="flex flex-wrap gap-2 mt-1">
                           {event.event_speakers.map((speaker, index) => (
                             <span 
@@ -280,7 +280,7 @@ export default function SimpleDashboardPage() {
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Lade Dashboard...</p>
+          <p className="mt-4 text-gray-900">Lade Dashboard...</p>
         </div>
       </div>
     );
@@ -290,7 +290,7 @@ export default function SimpleDashboardPage() {
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <h1 className="text-2xl font-bold text-red-600 mb-4">Fehler</h1>
-          <p className="text-gray-600 mb-4">{error}</p>
+          <p className="text-gray-900 mb-4">{error}</p>
           <Button onClick={loadDashboardData}>Erneut versuchen</Button>
         </div>
       </div>
@@ -301,7 +301,7 @@ export default function SimpleDashboardPage() {
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <h1 className="text-2xl font-bold text-gray-900 mb-4">Keine Daten</h1>
-          <p className="text-gray-600">Dashboard-Daten konnten nicht geladen werden.</p>
+          <p className="text-gray-900">Dashboard-Daten konnten nicht geladen werden.</p>
         </div>
       </div>
     );
@@ -328,9 +328,9 @@ export default function SimpleDashboardPage() {
                 { key: 'bav_checks', label: 'bAV Checks', current: ownWeeklyProgress?.bav_checks_current || 0, target: weeklyGoals.bavChecks }
               ].map((metric) => (
                 <div key={metric.key} className="text-center p-3 bg-blue-50 rounded-lg border border-blue-100">
-                  <div className="text-xs text-gray-600 mb-1">{metric.label}</div>
+                  <div className="text-xs text-gray-900 mb-1">{metric.label}</div>
                   <div className="text-lg font-bold text-blue-700">{metric.current} / {metric.target}</div>
-                  <div className="text-xs text-gray-500">
+                  <div className="text-xs text-gray-900">
                     {metric.target > 0 ? Math.round((metric.current / metric.target) * 100) : 0}%
                   </div>
                 </div>

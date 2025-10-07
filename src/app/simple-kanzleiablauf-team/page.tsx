@@ -1082,7 +1082,7 @@ export default function SimpleKanzleiablaufTeamPage() {
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Lade Team-Daten...</p>
+          <p className="text-gray-900">Lade Team-Daten...</p>
         </div>
       </div>
     );
@@ -1093,7 +1093,7 @@ export default function SimpleKanzleiablaufTeamPage() {
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <h1 className="text-2xl font-bold text-gray-900 mb-4">Nicht angemeldet</h1>
-          <p className="text-gray-600">Bitte melde dich an, um die Team-Daten zu sehen.</p>
+          <p className="text-gray-900">Bitte melde dich an, um die Team-Daten zu sehen.</p>
         </div>
       </div>
     );
@@ -1103,7 +1103,7 @@ export default function SimpleKanzleiablaufTeamPage() {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
-          <p className="text-gray-600">Keine Team-Daten verfügbar.</p>
+          <p className="text-gray-900">Keine Team-Daten verfügbar.</p>
           <Button onClick={() => loadTeamData()} className="mt-4">
             Erneut laden
           </Button>
@@ -1118,7 +1118,7 @@ export default function SimpleKanzleiablaufTeamPage() {
         {/* Header */}
         <div className="text-center">
           <h1 className="text-3xl font-bold text-gray-900 mb-2">📊 Kanzleiablauf</h1>
-          <p className="text-gray-600">Teamübersicht und Tagesplanung</p>
+          <p className="text-gray-900">Teamübersicht und Tagesplanung</p>
         </div>
 
         {/* Team View Navigation - äußerer Rahmen */}
@@ -1179,7 +1179,7 @@ export default function SimpleKanzleiablaufTeamPage() {
                   <div key={metric.key} className="p-3 bg-gray-50 rounded-lg">
                     <div className="flex justify-between items-center mb-2">
                       <div className="text-sm font-medium">{metric.fullLabel}</div>
-                      <div className="text-sm text-gray-600">{achieved} / {target}</div>
+                      <div className="text-sm text-gray-900">{achieved} / {target}</div>
                     </div>
                     <div className="w-full bg-gray-200 rounded-full h-2 mb-1">
                       <div 
@@ -1200,7 +1200,7 @@ export default function SimpleKanzleiablaufTeamPage() {
           {filteredData.teamMembers.length === 0 ? (
             <Card>
               <CardContent className="text-center py-8">
-                <p className="text-gray-500">Keine Team-Mitglieder-Daten verfügbar.</p>
+                <p className="text-gray-900">Keine Team-Mitglieder-Daten verfügbar.</p>
               </CardContent>
             </Card>
           ) : (
@@ -1245,7 +1245,7 @@ export default function SimpleKanzleiablaufTeamPage() {
                                   hasResults ? 'bg-green-100 border border-green-200' : 'bg-gray-100 border border-gray-200'
                                 }`}
                               >
-                                <div className="font-medium text-gray-600 text-xs">{metric.label}</div>
+                                <div className="font-medium text-gray-900 text-xs">{metric.label}</div>
                                 <div className="font-bold text-gray-900 text-xs">{achieved}/{target}</div>
                               </div>
                             );
@@ -1606,7 +1606,7 @@ export default function SimpleKanzleiablaufTeamPage() {
                                   hasGoal ? 'bg-blue-100 border border-blue-200' : 'bg-gray-100 border border-gray-200'
                                 }`}
                               >
-                                <div className="font-medium text-gray-600 text-xs">{metric.label}</div>
+                                <div className="font-medium text-gray-900 text-xs">{metric.label}</div>
                                 <div className="font-bold text-gray-900 text-xs">{target}</div>
                               </div>
                             );
