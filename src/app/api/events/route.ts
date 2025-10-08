@@ -97,10 +97,23 @@ export async function POST(request: NextRequest) {
 
     const eventData = await request.json();
 
+    // Normalize and validate payload
+    const normalized = {
+      ...eventData,
+      event_date: eventData.event_date && String(eventData.event_date).trim() !== '' ? eventData.event_date : null,
+      recurrence_end_date: eventData.recurrence_end_date && String(eventData.recurrence_end_date).trim() !== '' ? eventData.recurrence_end_date : null,
+      start_time: eventData.start_time && String(eventData.start_time).trim() !== '' ? eventData.start_time : null,
+      end_time: eventData.end_time && String(eventData.end_time).trim() !== '' ? eventData.end_time : null,
+    } as any;
+
+    if (!normalized.event_date) {
+      return NextResponse.json({ success: false, error: 'event_date is required' }, { status: 400 });
+    }
+
     const { data: newEvent, error } = await supabase
       .from('events')
       .insert({
-        ...eventData,
+        ...normalized,
         created_by: user.id
       })
       .select()
@@ -157,9 +170,22 @@ export async function PUT(request: NextRequest) {
 
     const { id, ...eventData } = await request.json();
 
+    // Normalize update payload as well
+    const normalized = {
+      ...eventData,
+      event_date: eventData.event_date && String(eventData.event_date).trim() !== '' ? eventData.event_date : null,
+      recurrence_end_date: eventData.recurrence_end_date && String(eventData.recurrence_end_date).trim() !== '' ? eventData.recurrence_end_date : null,
+      start_time: eventData.start_time && String(eventData.start_time).trim() !== '' ? eventData.start_time : null,
+      end_time: eventData.end_time && String(eventData.end_time).trim() !== '' ? eventData.end_time : null,
+    } as any;
+
+    if (!normalized.event_date) {
+      return NextResponse.json({ success: false, error: 'event_date is required' }, { status: 400 });
+    }
+
     const { data: updatedEvent, error } = await supabase
       .from('events')
-      .update(eventData)
+      .update(normalized)
       .eq('id', id)
       .select()
       .single();

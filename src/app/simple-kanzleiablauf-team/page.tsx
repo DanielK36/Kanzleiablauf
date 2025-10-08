@@ -456,25 +456,24 @@ export default function SimpleKanzleiablaufTeamPage() {
         }))
       ];
     } else {
-      // Nicht-Admins sehen nur ihren eigenen Team-Tab
-      const ownTeamView = availableTeamViews.find(teamView => 
-        teamView.name === currentUserTeam || teamView.id === currentUserTeam
-      );
-      
-      if (ownTeamView) {
-        return [{
-          id: ownTeamView.id,
-          label: `👥 ${ownTeamView.name}`,
-          description: ''
-        }];
-      } else {
-        // Fallback: Zeige "Meine Ansicht" wenn kein Team gefunden
-        return [{
-          id: 'current-user',
-          label: '👤 Meine Ansicht',
-          description: 'Aktuelle Team-Ansicht'
-        }];
+      // Nicht-Admins: eigener Team-Tab + alle Subteams als Tabs
+      const tabs: { id: string; label: string; description: string }[] = [];
+      if (currentUserTeam) {
+        tabs.push({ id: currentUserTeam, label: `👥 ${currentUserTeam}`, description: '' });
       }
+      // Subteams aus den bereits geladenen Subteams ableiten
+      const childSubteams = (teamData?.subteams || []).filter(st => st.teamLeader?.team_name && st.teamLeader.team_name !== currentUserTeam);
+      for (const st of childSubteams) {
+        const subteamName = st.teamLeader.team_name;
+        if (subteamName && !tabs.find(t => t.id === subteamName)) {
+          tabs.push({ id: subteamName, label: `👥 ${subteamName}`, description: '' });
+        }
+      }
+      // Fallback
+      if (tabs.length === 0) {
+        tabs.push({ id: 'current-user', label: '👤 Meine Ansicht', description: 'Aktuelle Team-Ansicht' });
+      }
+      return tabs;
     }
   })();
 
@@ -492,9 +491,15 @@ export default function SimpleKanzleiablaufTeamPage() {
         // Set available team views
         if (data.data.availableTeamViews) {
           setAvailableTeamViews(data.data.availableTeamViews);
-          // Set first team as active view (not current-user) - nur beim ersten Laden
-          if (data.data.availableTeamViews.length > 0 && activeView === '') {
-            setActiveView(data.data.availableTeamViews[0].id);
+          // Setze Standard-Tab nur beim ersten Laden
+          if (activeView === '') {
+            const isAdmin = (data.data.currentUser?.role === 'admin');
+            if (isAdmin) {
+              if (data.data.availableTeamViews.length > 0) setActiveView(data.data.availableTeamViews[0].id);
+            } else {
+              const ownTeam = data.data.currentUser?.team_name;
+              if (ownTeam) setActiveView(ownTeam);
+            }
           }
         }
       }
@@ -549,15 +554,25 @@ export default function SimpleKanzleiablaufTeamPage() {
       }) || [];
       
       // Finde alle Subteams des ausgewählten Teams
-      const selectedTeamSubteams = teamData.subteams?.filter(subteam => 
-        subteam.teamLeader.team_name === selectedTeam
-      ) || [];
+      // Für Goalgetter: Suche nach Straw Hats und Eys Breaker
+      const selectedTeamSubteams = teamData.subteams?.filter(subteam => {
+        const subteamName = subteam.teamLeader?.team_name;
+        // Hardcoded für Goalgetter -> Straw Hats, Eys Breaker
+        if (selectedTeam === 'Goalgetter') {
+          return subteamName === 'Straw Hats' || subteamName === 'Eys Breaker';
+        }
+        // Für andere Teams: Prüfe team_name
+        return subteam.teamLeader?.team_name === selectedTeam;
+      }) || [];
       
       // Sammle alle Mitglieder der Subteams
       const subteamMembers = selectedTeamSubteams.flatMap(subteam => subteam.members || []);
       
-      // Kombiniere Team-Mitglieder + Subteam-Mitglieder
-      const allMembers = [...selectedTeamMembers, ...subteamMembers];
+      // Sammle auch die Subteam-Leader selbst (z.B. Andreas, Patrick)
+      const subteamLeaders = selectedTeamSubteams.map(st => st.teamLeader).filter(Boolean);
+      
+      // Kombiniere Team-Mitglieder + Subteam-Mitglieder + Subteam-Leader
+      const allMembers = [...selectedTeamMembers, ...subteamMembers, ...subteamLeaders];
       const uniqueMembers = allMembers.filter((member, index, self) => 
         index === self.findIndex(m => m.id === member.id)
       );

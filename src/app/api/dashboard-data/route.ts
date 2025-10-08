@@ -522,8 +522,15 @@ export async function GET(request: NextRequest) {
     
     
     
-    // Debug: Check if Robin is in allTeamUsers
-    const robinInAllTeamUsers = allTeamUsers.find(u => u.name?.includes('Robin'));
+    // Debug: Log all team users to verify completeness
+    console.log('🔍 DEBUG - All Team Users:', {
+      count: allTeamUsers.length,
+      users: allTeamUsers.map(u => ({ id: u.id, name: u.name, team_name: u.team_name })),
+      subteams: subteams.map(st => ({ 
+        teamLeader: st.teamLeader.name, 
+        membersCount: st.members?.length || 0 
+      }))
+    });
     
     for (const teamUser of allTeamUsers) {
       
